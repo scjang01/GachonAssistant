@@ -11,6 +11,17 @@
 
 <hr />
 
+> [!NOTE]
+> **프로젝트 아카이브 안내**
+>
+> 현재 별도의 테스트 계정이 없는 상황으로, 유지보수가 어려워 본 프로젝트는 아카이브 상태로 전환되었습니다.
+>
+> 기존 기능은 계속 사용 가능하지만, 신규 기능 추가나 버그 수정은 진행되지 않습니다.
+>
+> 추가 개발을 원하시는 경우, 프로젝트를 포크하여 별도의 익스텐션으로 개발 및 배포하실 수 있습니다.
+
+<hr />
+
 ## 🤔 개발 배경
 
 안녕하세요! Gachon Tools는 제 학교 생활 경험에서 비롯된 프로젝트예요. 아마 여러분도 비슷한 경험이 있으셨을 거예요.
@@ -90,25 +101,6 @@ https://forms.gle/1aVSbBfwbzw9753b7
 #### 카카오톡 1:1 오픈채팅방
 
 https://open.kakao.com/o/sU8GUmPf
-
-## 🤝 기여하기
-
-Gachon Tools는 오픈 소스 프로젝트예요. 여러분의 기여를 환영합니다!
-
-1. [이 저장소](https://github.com/kangju2000/gachon-tools)를 Fork 해주세요.
-2. 새로운 Branch를 만들어주세요: `git checkout -b feat/AmazingFeature`
-3. 변경사항을 Commit 해주세요: `git commit -m 'Add some AmazingFeature'`
-4. Branch에 Push 해주세요: `git push origin feat/AmazingFeature`
-5. Pull Request를 보내주세요.
-
-자세한 내용은 [기여 문서](https://github.com/kangju2000/gachon-tools/blob/main/CONTRIBUTING.md)를 확인해주세요.
-
-## 🤔 추가 계획 중인 기능
-
-- 퀴즈 과제 추가
-- 언어 설정
-- 팀 프로젝트 과제 제출 여부 정확도 개선
-- 과제 알림 기능
 
 ## 📋 매뉴얼
 
