@@ -2,20 +2,19 @@ import { Keyboard } from 'lucide-react'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 
 import { SettingItem } from './SettingItem'
-import { KOREAN_TO_ENGLISH, SHORTCUTS } from '@/constants'
+import { SHORTCUTS, KOREAN_TO_ENGLISH } from '@/constants/shortcuts'
 import { useShortcutStore } from '@/storage/useShortcutStore'
 import { useStorageStore } from '@/storage/useStorageStore'
-import { cn } from '@/utils/cn'
-import { isMac } from '@/utils/isMac'
+import { cn, isMac } from '@/utils'
 
 const formatShortcutForDisplay = (shortcut: string) => {
   return shortcut
     .split('+')
     .map(key => {
-      if (key === 'meta') return isMac ? '⌘' : 'Win'
-      if (key === 'alt') return isMac ? '⌥' : 'Alt'
-      if (key === 'ctrl') return isMac ? '⌃' : 'Ctrl'
-      if (key === 'shift') return isMac ? '⇧' : 'Shift'
+      if (key === 'meta') return isMac() ? '⌘' : 'Win'
+      if (key === 'alt') return isMac() ? '⌥' : 'Alt'
+      if (key === 'ctrl') return isMac() ? '⌃' : 'Ctrl'
+      if (key === 'shift') return isMac() ? '⇧' : 'Shift'
       return key.charAt(0).toUpperCase() + key.slice(1)
     })
     .join(' + ')
@@ -47,8 +46,8 @@ export function Shortcut() {
       }
 
       const newShortcut = [
-        (isMac ? metaKey : ctrlKey) && (isMac ? 'meta' : 'ctrl'),
-        !isMac && metaKey && 'meta',
+        (isMac() ? metaKey : ctrlKey) && (isMac() ? 'meta' : 'ctrl'),
+        !isMac() && metaKey && 'meta',
         altKey && 'alt',
         shiftKey && 'shift',
         processedKey,
@@ -102,7 +101,7 @@ export function Shortcut() {
   }, [isEditing, handleShortcutChange])
 
   return (
-    <SettingItem title="단축키 설정" description="GachonTools를 열고 닫을 단축키를 설정합니다.">
+    <SettingItem title="단축키 설정" description="가천 어시스턴트를 열고 닫을 단축키를 설정합니다.">
       <div className="space-y-3">
         <div className="relative">
           <input

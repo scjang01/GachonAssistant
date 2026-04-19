@@ -19,21 +19,39 @@ chrome.runtime.onUpdateAvailable.addListener(() => {
   chrome.runtime.reload()
 })
 
-chrome.runtime.onConnect.addListener(port => {
-  console.log('Connected .....', port)
+chrome.action.onClicked.addListener(tab => {
+  if (tab.id) {
+    chrome.tabs.sendMessage(tab.id, { action: 'toggle-dashboard' })
+  }
+})
 
+// 다른 사이트에서의 CSP 제한을 피하기 위해 백그라운드에서 fetch를 대행합니다.
+chrome.runtime.onMessage.addListener((request, _sender, sendResponse) => {
+  if (request.action === 'fetch-html') {
+    fetch(request.url, { credentials: 'include' })
+      .then(async response => {
+        if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`)
+        const html = await response.text()
+        sendResponse({ success: true, html, finalUrl: response.url })
+      })
+      .catch(error => {
+        sendResponse({ success: false, error: error.message })
+      })
+    return true // 비동기 응답을 위해 true 반환
+  }
+})
+
+chrome.runtime.onConnect.addListener(port => {
   if (port.name === '@crx/client') {
-    port.onMessage.addListener(msg => {
-      console.log('message received', msg)
+    port.onMessage.addListener(() => {
+      // Message handling
     })
   }
 })
 
 chrome.storage.onChanged.addListener((changes, areaName) => {
   if (areaName === 'local') {
-    for (const key of Object.keys(changes)) {
-      console.log(`storage.local.${key} changed`)
-    }
+    // Storage change handling
   }
 })
 

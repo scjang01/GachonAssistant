@@ -24,4 +24,12 @@ export default defineConfig({
       '@/assets': resolve(__dirname, './src/assets'),
     },
   },
+  server: {
+    port: 5173,
+    strictPort: true,
+    hmr: {
+      port: 5173,
+    },
+    cors: true,
+  },
 })

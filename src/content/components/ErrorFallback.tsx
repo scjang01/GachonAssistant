@@ -6,7 +6,7 @@ import { ToastContainer } from './ToastContainer'
 import packageJson from '../../../package.json'
 import { createSnapshots } from '@/apis/snapshots'
 import { useStorageStore } from '@/storage/useStorageStore'
-import { cn } from '@/utils/cn'
+import { cn } from '@/utils'
 
 import type { FallbackProps } from 'react-error-boundary'
 

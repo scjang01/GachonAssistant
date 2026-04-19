@@ -1,7 +1,7 @@
 {
-  "name": "gachon-tools",
+  "name": "gachon-assistant",
   "description": "과제 대시보드 · 사이버캠퍼스 어시스턴트",
-  "version": "2.1.0",
+  "version": "2.2.0",
   "license": "MIT",
   "type": "module",
   "sideEffects": false,
@@ -12,7 +12,6 @@
     "lint": "eslint . --ext ts,tsx --report-unused-disable-directives --max-warnings 0",
     "test": "vitest",
     "coverage": "vitest run --coverage",
-    "preinstall": "npx only-allow pnpm",
     "prepare": "husky",
     "generate:snapshots": "tsx scripts/generateSnapshot.ts"
   },
@@ -25,8 +24,6 @@
     "lucide-react": "^0.441.0",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
-    "react-dropzone": "^14.2.3",
-    "react-easy-crop": "^5.0.8",
     "react-error-boundary": "^4.0.13",
     "react-hot-toast": "^2.4.1",
     "react-hotkeys-hook": "^4.4.1",
@@ -68,10 +65,5 @@
       "prettier --write",
       "eslint --fix"
     ]
-  },
-  "packageManager": "pnpm@8.15.0",
-  "engines": {
-    "node": "20.x",
-    "pnpm": "8.15.0"
   }
 }

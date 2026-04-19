@@ -1,41 +1,24 @@
 import { motion } from 'framer-motion'
 
-type LoadingSkeletonProps = {
-  progress: number
-}
-
-export function LoadingSkeleton({ progress }: LoadingSkeletonProps) {
+export function LoadingSkeleton() {
   return (
     <div className="space-y-16px">
-      <motion.div
-        className="h-3px w-full overflow-hidden rounded-full bg-blue-100"
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        transition={{ duration: 0.5 }}
-      >
-        <motion.div
-          className="h-full bg-blue-400"
-          initial={{ width: 0 }}
-          animate={{ width: `${progress}%` }}
-          transition={{ duration: 0.5, ease: 'easeInOut' }}
-        />
-      </motion.div>
       {[...Array(4)].map((_, index) => (
         <motion.div
           key={index}
-          className="rounded-12px bg-white p-12px shadow-sm"
-          initial={{ opacity: 0, y: 20 }}
+          className="mb-12px rounded-12px border border-gray-100 bg-white p-12px shadow-sm"
+          initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.3, delay: index * 0.1 }}
+          transition={{ duration: 0.3, delay: index * 0.05 }}
         >
           <div className="mb-8px flex items-center gap-8px">
-            <div className="h-20px w-40px animate-pulse rounded-8px bg-gray-200" />
-            <div className="h-16px flex-1 animate-pulse rounded-4px bg-gray-200" />
+            <div className="h-18px w-18px animate-pulse rounded-full bg-gray-100" />
+            <div className="h-14px w-1/3 animate-pulse rounded-4px bg-gray-100" />
           </div>
-          <div className="mb-4px h-12px w-2/3 animate-pulse rounded-4px bg-gray-200" />
-          <div className="flex items-center justify-between">
-            <div className="h-10px w-20px animate-pulse rounded-4px bg-gray-200" />
-            <div className="h-20px w-60px animate-pulse rounded-8px bg-gray-200" />
+          <div className="mb-12px h-16px w-full animate-pulse rounded-4px bg-gray-100" />
+          <div className="flex items-center justify-between border-t border-gray-50 pt-8px">
+            <div className="h-12px w-1/4 animate-pulse rounded-4px bg-gray-50" />
+            <div className="h-16px w-1/4 animate-pulse rounded-8px bg-gray-50" />
           </div>
         </motion.div>
       ))}

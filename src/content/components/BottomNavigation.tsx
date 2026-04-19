@@ -1,4 +1,4 @@
-import { cn } from '@/utils/cn'
+import { cn } from '@/utils'
 
 type NavigationProps = {
   activeTab: 'tasks' | 'settings'
@@ -9,7 +9,7 @@ export function BottomNavigation({ activeTab, setActiveTab }: NavigationProps) {
   return (
     <div className="flex justify-around border-t border-gray-200 bg-white bg-opacity-80">
       <button
-        className={cn('flex flex-1 flex-col items-center justify-center px-16px py-12px', {
+        className={cn('flex flex-1 flex-col items-center justify-center px-16px py-8px', {
           'text-blue-500': activeTab === 'tasks',
           'text-gray-500': activeTab !== 'tasks',
         })}
@@ -17,7 +17,7 @@ export function BottomNavigation({ activeTab, setActiveTab }: NavigationProps) {
       >
         <svg
           xmlns="http://www.w3.org/2000/svg"
-          className="mb-4px h-24px w-24px"
+          className="mb-4px h-20px w-20px"
           viewBox="0 0 20 20"
           fill="currentColor"
         >
@@ -31,7 +31,7 @@ export function BottomNavigation({ activeTab, setActiveTab }: NavigationProps) {
         <span className="text-12px">과제</span>
       </button>
       <button
-        className={cn('flex flex-1 flex-col items-center justify-center px-16px py-12px', {
+        className={cn('flex flex-1 flex-col items-center justify-center px-16px py-8px', {
           'text-blue-500': activeTab === 'settings',
           'text-gray-500': activeTab !== 'settings',
         })}
@@ -39,7 +39,7 @@ export function BottomNavigation({ activeTab, setActiveTab }: NavigationProps) {
       >
         <svg
           xmlns="http://www.w3.org/2000/svg"
-          className="mb-4px h-24px w-24px"
+          className="mb-4px h-20px w-20px"
           viewBox="0 0 20 20"
           fill="currentColor"
         >

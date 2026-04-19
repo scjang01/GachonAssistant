@@ -1,10 +1,7 @@
 {
   "timestamp": "2024-11-25T16:03:06.656Z",
   "totalSnapshots": 24,
-  "courses": [
-    "105749",
-    "103956"
-  ],
+  "courses": ["105749", "103956"],
   "paths": [
     "/report/ubcompletion/user_progress.php?id=105749",
     "/course/view.php?id=105749",

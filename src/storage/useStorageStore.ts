@@ -4,7 +4,7 @@ import { chromeStorageClient } from './chromeStorageClient'
 import packageJson from '../../package.json'
 import { filterActivities } from '@/content/components/task/filterActivities'
 import type { Activity, StorageData } from '@/types'
-import { isMac } from '@/utils/isMac'
+import { isMac } from '@/utils'
 
 interface StorageStore extends StorageData {
   isInitialized: boolean
@@ -16,15 +16,16 @@ interface StorageStore extends StorageData {
 
 const initialStorageData: StorageData = {
   meta: { version: packageJson.version, updateAt: '2024-01-01T00:00:00.000Z' },
-  contents: { courseList: [{ id: '-1', title: '전체 과목' }], activityList: [] },
-  filterOptions: { status: 'ongoing', courseId: '-1' },
+  contents: { courseList: [], activityList: [] },
+  filterOptions: { statuses: [], courseIds: [], categories: [] },
+  manualOverrides: {},
   settings: {
     refreshInterval: 1000 * 60 * 20,
     trigger: {
-      type: 'image',
-      image: chrome.runtime.getURL('/assets/Lee-Gil-ya.webp'),
+      type: 'color',
+      color: '#3b82f6',
     },
-    shortcut: isMac ? 'meta+/' : 'Ctrl+/',
+    shortcut: isMac() ? 'meta+/' : 'Ctrl+/',
   },
 }
 
@@ -32,6 +33,7 @@ const mergeData = (initial: StorageData, stored: Partial<StorageData>): StorageD
   meta: { ...initial.meta, ...stored.meta, version: packageJson.version },
   contents: { ...initial.contents, ...stored.contents },
   filterOptions: { ...initial.filterOptions, ...stored.filterOptions },
+  manualOverrides: { ...initial.manualOverrides, ...stored.manualOverrides },
   settings: { ...initial.settings, ...stored.settings },
 })
 
@@ -42,20 +44,49 @@ export const useStorageStore = create<StorageStore>((set, get) => ({
   initialize: async () => {
     const storedData = await chromeStorageClient.getData()
     const mergedData = mergeData(initialStorageData, storedData)
+
     await chromeStorageClient.setData(mergedData)
     set({ ...mergedData, isInitialized: true })
   },
 
   updateData: async <K extends keyof StorageData>(key: K, updater: (prev: StorageData[K]) => StorageData[K]) => {
     const updatedData = updater(get()[key])
+
+    // activityList 업데이트 시 manualOverrides 정리
+    if (key === 'contents') {
+      const { activityList } = updatedData as StorageData['contents']
+      const currentOverrides = { ...get().manualOverrides }
+      let hasChanged = false
+
+      activityList.forEach(activity => {
+        if (currentOverrides[activity.id] !== undefined && currentOverrides[activity.id] === activity.hasSubmitted) {
+          delete currentOverrides[activity.id]
+          hasChanged = true
+        }
+      })
+
+      if (hasChanged) {
+        await chromeStorageClient.updateDataByKey('manualOverrides', () => currentOverrides)
+        set(state => ({ ...state, manualOverrides: currentOverrides }))
+      }
+    }
+
     await chromeStorageClient.updateDataByKey(key, () => updatedData)
     set(state => ({ ...state, [key]: updatedData }))
   },
 
-  getFilteredActivities: (searchQuery: string) =>
-    get()
-      .contents.activityList.filter(activity => filterActivities(activity, { ...get().filterOptions, searchQuery }))
-      .sort((a, b) => new Date(a.endAt).getTime() - new Date(b.endAt).getTime()),
+  getFilteredActivities: (searchQuery: string) => {
+    const { activityList } = get().contents
+    const { manualOverrides, filterOptions } = get()
+
+    return activityList
+      .map(activity => ({
+        ...activity,
+        hasSubmitted: manualOverrides[activity.id] !== undefined ? manualOverrides[activity.id] : activity.hasSubmitted,
+      }))
+      .filter(activity => filterActivities(activity, { ...filterOptions, searchQuery }))
+      .sort((a, b) => new Date(a.endAt).getTime() - new Date(b.endAt).getTime())
+  },
 
   resetStore: async () => {
     await chromeStorageClient.setData(initialStorageData)

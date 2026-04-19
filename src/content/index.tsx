@@ -1,15 +1,14 @@
 import { createRoot } from 'react-dom/client'
-import cropperStyles from 'react-easy-crop/react-easy-crop.css?inline'
 
 import { App } from './App'
 import styles from '@/styles/index.css?inline'
-import createShadowRoot from '@/utils/createShadowRoot'
+import { createShadowRoot } from '@/utils'
 
 function initApp() {
   // remove scroll to top button
   document.getElementById('back-top')?.remove()
 
-  const shadowRoot = createShadowRoot([styles, cropperStyles])
+  const shadowRoot = createShadowRoot([styles])
   createRoot(shadowRoot).render(<App />)
 }
 

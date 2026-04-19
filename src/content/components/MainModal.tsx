@@ -1,51 +1,45 @@
 import { motion } from 'framer-motion'
-import { useState, useMemo } from 'react'
 
-import { BottomNavigation } from './BottomNavigation'
-import { SettingsContent } from './setting'
-import { TaskContent } from './task'
-import { ToastContainer } from './ToastContainer'
+import { Dashboard } from '@/components/Dashboard'
 
 import type { Variants } from 'framer-motion'
 
 const modalVariants: Variants = {
   hidden: {
     opacity: 0,
-    scale: 0.8,
+    x: 400, // 오른쪽 화면 밖에서 시작
   },
   visible: {
     opacity: 1,
-    scale: 1,
-    transition: { type: 'spring', stiffness: 100, damping: 12, mass: 0.5 },
+    x: 0, // 원래 위치로 슬라이드
+    transition: {
+      type: 'spring',
+      stiffness: 200,
+      damping: 24,
+      mass: 0.8,
+    },
   },
   exit: {
     opacity: 0,
-    scale: 0.8,
-    transition: { type: 'spring', stiffness: 150, damping: 18, mass: 0.5 },
+    x: 400, // 다시 오른쪽으로 사라짐
+    transition: {
+      ease: 'easeInOut',
+      duration: 0.2,
+    },
   },
 }
 
 export function MainModal() {
-  const [activeTab, setActiveTab] = useState<'tasks' | 'settings'>('tasks')
-
-  const Content = useMemo(() => {
-    return activeTab === 'tasks' ? <TaskContent /> : <SettingsContent />
-  }, [activeTab])
-
   return (
     <motion.div
       variants={modalVariants}
       initial="hidden"
       animate="visible"
       exit="exit"
-      transition={{ duration: 0.3 }}
-      className="fixed bottom-96px right-25px h-600px w-350px origin-bottom-right overflow-hidden rounded-36px bg-slate-100 shadow-[0_0_100px_0_rgba(0,0,0,0.2)] backdrop-blur-sm"
+      // pointer-events-auto를 추가하여 최상위 호스트의 'none' 설정을 덮어쓰고 클릭을 허용합니다.
+      className="fixed bottom-96px right-25px z-[2147483647] h-600px w-350px origin-right overflow-hidden rounded-36px bg-slate-100 shadow-[0_0_100px_0_rgba(0,0,0,0.2)] backdrop-blur-sm pointer-events-auto"
     >
-      <div className="flex h-full flex-col">
-        {Content}
-        <BottomNavigation activeTab={activeTab} setActiveTab={setActiveTab} />
-        <ToastContainer />
-      </div>
+      <Dashboard />
     </motion.div>
   )
 }

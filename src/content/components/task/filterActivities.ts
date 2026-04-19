@@ -1,28 +1,37 @@
 import { isValid } from 'date-fns'
 
-import type { Activity } from '@/types'
-import type { ActivityStatus, FilterOptions as _FilterOptions } from '@/types/storage'
+import type { Activity, ActivityStatus, FilterOptions as _FilterOptions } from '@/types'
+import { getTaskStatus } from '@/utils'
 
-interface FilterOptions extends _FilterOptions {
-  searchQuery?: string
+const isValidActivity = (activity: Activity): boolean =>
+  activity.title !== '' && (!activity.endAt || activity.endAt === '' || isValid(new Date(activity.endAt)))
+
+const filterByStatus = (activity: Activity, statuses: ActivityStatus[]): boolean => {
+  if (statuses.length === 0 || statuses.includes('all')) return true
+
+  const taskStatus = getTaskStatus(activity)
+
+  return statuses.some(status => {
+    if (status === 'ongoing') {
+      return taskStatus === 'ongoing' || taskStatus === 'no-deadline'
+    }
+    return taskStatus === status
+  })
 }
 
-const isOngoing = (activity: Activity): boolean => {
-  return new Date() <= new Date(activity.endAt)
+const filterByCourse = (activity: Activity, courseIds: string[]): boolean =>
+  courseIds.length === 0 || courseIds.includes('-1') || courseIds.includes(activity.courseId)
+
+const filterByCategory = (activity: Activity, categories: string[]): boolean => {
+  if (categories.length === 0 || categories.includes('all')) return true
+
+  return categories.some(category => {
+    if (category === 'video' || category === 'mooc') {
+      return activity.type === 'video' || activity.type === 'mooc'
+    }
+    return activity.type === category
+  })
 }
-
-const isValidActivity = (activity: Activity): boolean => activity.id !== '' && isValid(new Date(activity.endAt))
-
-const filterByStatus = (activity: Activity, status: ActivityStatus): boolean => {
-  if (status === 'ongoing') {
-    return isOngoing(activity)
-  }
-
-  return true
-}
-
-const filterByCourse = (activity: Activity, courseId: string): boolean =>
-  courseId === '-1' || activity.courseId === courseId
 
 const filterBySearchQuery = (activity: Activity, searchQuery?: string): boolean => {
   if (!searchQuery) return true
@@ -30,11 +39,12 @@ const filterBySearchQuery = (activity: Activity, searchQuery?: string): boolean 
   return activity.title.toLowerCase().includes(query) || activity.courseTitle.toLowerCase().includes(query)
 }
 
-export function filterActivities(activity: Activity, options: FilterOptions): boolean {
+export function filterActivities(activity: Activity, options: _FilterOptions & { searchQuery?: string }): boolean {
   return (
     isValidActivity(activity) &&
-    filterByStatus(activity, options.status) &&
-    filterByCourse(activity, options.courseId) &&
+    filterByStatus(activity, options.statuses) &&
+    filterByCourse(activity, options.courseIds) &&
+    filterByCategory(activity, options.categories) &&
     filterBySearchQuery(activity, options.searchQuery)
   )
 }
