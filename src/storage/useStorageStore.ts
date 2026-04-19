@@ -85,7 +85,11 @@ export const useStorageStore = create<StorageStore>((set, get) => ({
         hasSubmitted: manualOverrides[activity.id] !== undefined ? manualOverrides[activity.id] : activity.hasSubmitted,
       }))
       .filter(activity => filterActivities(activity, { ...filterOptions, searchQuery }))
-      .sort((a, b) => new Date(a.endAt).getTime() - new Date(b.endAt).getTime())
+      .sort((a, b) => {
+        const timeA = a.endAt ? new Date(a.endAt).getTime() : Infinity
+        const timeB = b.endAt ? new Date(b.endAt).getTime() : Infinity
+        return timeA - timeB
+      })
   },
 
   resetStore: async () => {

@@ -97,23 +97,23 @@ export function createShadowRoot(styles: string[]): ShadowRoot {
   const host = document.createElement('div')
   host.setAttribute('id', SHADOW_HOST_ID)
   
-  // 배경 사이트의 어떤 요소보다도 앞에 오도록 z-index 최상위 설정
+  // 호스트를 전체 화면으로 설정하되, 클릭은 통과시키도록 함
   Object.assign(host.style, {
     position: 'fixed',
     top: '0',
     left: '0',
-    width: '0',
-    height: '0',
+    width: '100vw',
+    height: '100vh',
     zIndex: '2147483647',
-    pointerEvents: 'none', // 호스트 자체는 클릭을 막지 않음
+    pointerEvents: 'none', 
   })
 
   const shadowRoot = host.attachShadow({ mode: 'open' })
 
-  const globalStyleSheet = new CSSStyleSheet()
-  globalStyleSheet.replaceSync(styles.join('\n'))
-
-  shadowRoot.adoptedStyleSheets = [globalStyleSheet]
+  // CSSStyleSheet() 방식이 구형 브라우저나 특정 환경에서 호환성 문제가 있을 수 있으므로 style 태그 방식으로 복구
+  const styleTag = document.createElement('style')
+  styleTag.textContent = styles.join('\n')
+  shadowRoot.appendChild(styleTag)
 
   document.body.appendChild(host)
 

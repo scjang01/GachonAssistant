@@ -10,7 +10,11 @@ export const useTaskFilter = (searchQuery: string) => {
   const getFilteredActivities = useStorageStore(state => state.getFilteredActivities)
   const updateData = useStorageStore(state => state.updateData)
 
-  const filteredTasks = useMemo(() => getFilteredActivities(searchQuery), [getFilteredActivities, searchQuery])
+  // BUG FIX: contents와 filterOptions가 바뀔 때도 필터링이 다시 수행되어야 합니다.
+  const filteredTasks = useMemo(
+    () => getFilteredActivities(searchQuery),
+    [getFilteredActivities, searchQuery, contents, filterOptions, manualOverrides],
+  )
 
   const now = useMemo(() => new Date(), [])
 
