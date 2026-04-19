@@ -1,61 +1,59 @@
-import { z } from 'zod'
-
 // Selectors
-export const domSelectorsSchema = z.object({
-  courses: z.object({
-    link: z.string(),
-    label: z.string(),
-  }),
-  activities: z.object({
-    sections: z.object({
-      first: z.string(),
-      all: z.string(),
-      title: z.string(),
-    }),
-    assignment: z.object({
-      container: z.string(),
-      link: z.string(),
-      title: z.string(),
-      period: z.string(),
-    }),
-    video: z.object({
-      container: z.string(),
-      link: z.string(),
-      title: z.string(),
-      period: z.string(),
-    }),
-    quiz: z.object({
-      container: z.string(),
-      link: z.string(),
-      title: z.string(),
-      period: z.string(),
-    }),
-  }),
-  submissions: z.object({
-    assignment: z.object({
-      container: z.string(),
-      divider: z.string(),
-      title: z.string(),
-      period: z.string(),
-      status: z.string(),
-    }),
-    quiz: z.object({
-      container: z.string(),
-      title: z.string(),
-      period: z.string(),
-      status: z.string(),
-    }),
-    video: z.object({
-      container: z.string(),
-      title: z.string(),
-      sectionTitle: z.string(),
-      requiredTime: z.string(),
-      period: z.string(),
-    }),
-  }),
-})
+export interface DOMSelectors {
+  courses: {
+    link: string
+    label: string
+  }
+  activities: {
+    sections: {
+      first: string
+      all: string
+      title: string
+    }
+    assignment: {
+      container: string
+      link: string
+      title: string
+      period: string
+    }
+    video: {
+      container: string
+      link: string
+      title: string
+      period: string
+    }
+    quiz: {
+      container: string
+      link: string
+      title: string
+      period: string
+    }
+  }
+  submissions: {
+    assignment: {
+      container: string
+      divider: string
+      title: string
+      period: string
+      status: string
+    }
+    quiz: {
+      container: string
+      title: string
+      period: string
+      status: string
+    }
+    video: {
+      container: string
+      title: string
+      sectionTitle: string
+      requiredTime: string
+      period: string
+    }
+  }
+}
 
-export const DOM_SELECTORS = domSelectorsSchema.parse({
+export const DOM_SELECTORS: DOMSelectors = {
   courses: {
     link: 'a[href*="course/view.php?id="]',
     label: '.label-course, .course_label_re, .badge-course, .badge, .label',
@@ -107,15 +105,12 @@ export const DOM_SELECTORS = domSelectorsSchema.parse({
       period: 'td:nth-child(2)', // 가천대 기준 두 번째 열이 주차/기간 정보임
     },
   },
-})
+}
 
 // Universities
 export const UNIVERSITY_REGEX = {
   가천대학교: {
     titleRegex: /\s*\[\d+\]|\s*\([\w\d]+_[\w\d]+\)/g,
-  },
-  서울시립대학교: {
-    titleRegex: /\s*\[\d+\]/g,
   },
 } as const
 

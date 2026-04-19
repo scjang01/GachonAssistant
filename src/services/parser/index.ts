@@ -8,28 +8,38 @@ import { getLinkId, mapElement, getAttr, getText, getDirectText, origin } from '
 import type * as cheerio from 'cheerio'
 import type { AnyNode } from 'domhandler'
 
+/**
+ * 전역 유틸리티: 문자열 정규화 (공백/특수문자 제거 및 소문자화)
+ */
+const normalizeString = (str: string) => str.replace(/[\s\W_]/g, '').toLowerCase()
+
+/**
+ * 전역 유틸리티: 시간 문자열(HH:MM:SS)을 초 단위로 변환
+ */
+const timeToSeconds = (time: string) => {
+  const parts = time.split(':').map(Number).filter(n => !isNaN(n))
+  if (parts.length === 2) return parts[0] * 60 + parts[1]
+  if (parts.length === 3) return parts[0] * 3600 + parts[1] * 60 + parts[2]
+  return 0
+}
+
+/**
+ * 과목 목록을 가져옵니다.
+ */
 export async function getCourses(
   university: University = UNIVERSITY_NAME_MAP[origin] || '가천대학교',
   params?: { year: number; semester: number },
 ): Promise<Course[]> {
-  // 과목명은 한국어로 가져오기 위해 'ko' 전달
-  const baseUrl = params ? URL_PATTERNS.coursesWithYearSemester(params.year, params.semester) : URL_PATTERNS.courses
-  const url = baseUrl
-
+  const url = params ? URL_PATTERNS.coursesWithYearSemester(params.year, params.semester) : URL_PATTERNS.courses
   const $ = await fetchAndParse(url, 'ko')
 
   const { link } = DOM_SELECTORS.courses
   let links: cheerio.Cheerio<AnyNode> = $('.my-course-lists').find(link)
-
-  if (links.length === 0) {
-    links = $(link)
-  }
+  if (links.length === 0) links = $(link)
 
   const courses = mapElement(links, (_, el) => {
     const $el = $(el)
-    const href = getAttr($el, 'href') || ''
-    const id = getLinkId(href)
-
+    const id = getLinkId(getAttr($el, 'href') || '')
     if (!id) return undefined
 
     const title = getText($el)
@@ -39,199 +49,43 @@ export async function getCourses(
     return { id, title }
   })
 
-  const uniqueCourses = Array.from(new Map(courses.map(c => [c.id, c])).values())
-
-  return uniqueCourses
+  return Array.from(new Map(courses.map(c => [c.id, c])).values())
 }
 
 /**
- * Generic helper to parse activities from a course page
+ * 과제 제출 현황을 가져옵니다.
  */
-function parseActivitiesByType<T extends Activity>(
-  $: cheerio.CheerioAPI,
-  courseId: string,
-  type: T['type'],
-  selectors: { container: string; link: string; title: string; period: string },
-): Array<Omit<T, 'courseTitle' | 'hasSubmitted'>> {
-  const { sections } = DOM_SELECTORS.activities
-
-  const parseItem = ($el: cheerio.Cheerio<AnyNode>, sectionTitle?: string) => {
-    const $link = $el.find(selectors.link)
-    const id = getLinkId(getAttr($link, 'href') || '')
-    const title = getDirectText($el.find(selectors.title))
-    const periodRaw = getDirectText($el.find(selectors.period))
-    const [startAt, endAt] = periodRaw.split(' ~ ').map(t => t.trim())
-
-    const base = { type, id, courseId, title, startAt: startAt || '', endAt: endAt || '', sectionTitle }
-    return base as unknown as Omit<T, 'courseTitle' | 'hasSubmitted'>
-  }
-
-  const firstSectionItems = mapElement($(`${sections.first} ${selectors.container}`), (_, el) => parseItem($(el)))
-  const otherSectionItems = mapElement($(sections.all), (_, content) => {
-    const $content = $(content)
-    const sectionTitle = getText($content.find(sections.title))
-    return mapElement($content.find(selectors.container), (_, el) => parseItem($(el), sectionTitle))
-  }).flat()
-
-  return [...firstSectionItems, ...otherSectionItems]
-}
-
-export const parseAssignments = ($: cheerio.CheerioAPI, courseId: string) =>
-  parseActivitiesByType<Assignment>($, courseId, 'assignment', DOM_SELECTORS.activities.assignment)
-
-export const parseVideos = ($: cheerio.CheerioAPI, courseId: string) =>
-  parseActivitiesByType<Video>($, courseId, 'video', DOM_SELECTORS.activities.video)
-
-export const parseQuizzes = ($: cheerio.CheerioAPI, courseId: string) =>
-  parseActivitiesByType<Quiz>($, courseId, 'quiz', DOM_SELECTORS.activities.quiz)
-
-export function parseAssignmentSubmitted(
-  $: cheerio.CheerioAPI,
-): Array<Pick<Assignment, 'id' | 'title' | 'hasSubmitted' | 'endAt'>> {
-  const { container, divider, title, period, status } = DOM_SELECTORS.submissions.assignment
-
-  return mapElement($(container), (_, el) => {
-    const $el = $(el)
-    if ($el.find(divider).length) return
-
-    const id = getLinkId(getAttr($el.find(title), 'href') || '')
-    const assignmentTitle = getText($el.find(title))
-    const endAt = getText($el.find(period)) + ':00'
-    const statusText = getText($el.find(status))
-    const { DONE } = SUBMISSION_STRINGS.ASSIGNMENT
-    const hasSubmitted = (DONE as readonly string[]).some(keyword => statusText.includes(keyword))
-
-    return { id, title: assignmentTitle, endAt, hasSubmitted }
-  })
-}
-
-export function parseVideoSubmitted(
-  $: cheerio.CheerioAPI,
-): Array<Pick<Video, 'title' | 'hasSubmitted' | 'sectionTitle' | 'progress'>> {
-  const { container, title, sectionTitle, requiredTime } = DOM_SELECTORS.submissions.video
-
-  let currentSectionTitle = ''
-  return mapElement($(container), (_, el) => {
-    const $el = $(el)
-
-    const iconSrc = $el.find('td img').attr('src') || ''
-    if (!iconSrc.includes('vod') || !iconSrc.includes('icon')) return
-
-    const $sectionTitle = $el.find(sectionTitle)
-    const originalTitle = $sectionTitle.attr('title')
-
-    if (originalTitle != null && originalTitle !== '') {
-      currentSectionTitle = originalTitle
-    }
-
-    const videoTitle = getText($el.find(title))
-    const $std = $el.find(requiredTime)
-
-    const cellText = getText($std)
-    const { COLLECTIVE, DONE: VIDEO_DONE } = SUBMISSION_STRINGS.VIDEO
-    if ((COLLECTIVE as readonly string[]).some(s => cellText.includes(s))) {
-      return { title: videoTitle, hasSubmitted: true, progress: 100, sectionTitle: currentSectionTitle }
-    }
-
-    const required = getDirectText($std)
-    const study = getDirectText($std.next())
-
-    const timeToSeconds = (time: string) => {
-      const parts = time
-        .split(':')
-        .map(Number)
-        .filter(n => !isNaN(n))
-      if (parts.length === 2) return parts[0] * 60 + parts[1]
-      if (parts.length === 3) return parts[0] * 3600 + parts[1] * 60 + parts[2]
-      return 0
-    }
-
-    const requiredSec = timeToSeconds(required)
-    const studySec = timeToSeconds(study)
-
-    const statusSymbol = getText($el.find('td').last())
-    const isCompletedBySymbol = (VIDEO_DONE as readonly string[]).includes(statusSymbol)
-
-    const progress =
-      requiredSec > 0 ? Math.min(Math.round((studySec / requiredSec) * 100), 100) : isCompletedBySymbol ? 100 : 0
-
-    const finalProgress = studySec >= requiredSec && requiredSec > 0 ? 100 : progress
-    const hasSubmitted = finalProgress >= 100 || isCompletedBySymbol
-
-    return { title: videoTitle, hasSubmitted, progress: finalProgress, sectionTitle: currentSectionTitle }
-  })
-}
-
-export function parseQuizSubmitted(
-  $: cheerio.CheerioAPI,
-): Array<Pick<Quiz, 'id' | 'title' | 'hasSubmitted' | 'endAt'>> {
-  const { container, title, period, status } = DOM_SELECTORS.submissions.quiz
-
-  return mapElement($(container), (_, el) => {
-    const $el = $(el)
-    const $title = $el.find(title)
-    if (!$title.length) return
-
-    const id = getLinkId(getAttr($title, 'href'))
-    const quizTitle = getText($title)
-    const rawPeriod = getText($el.find(period)).trim()
-    const endAt = rawPeriod === '-' || !rawPeriod ? '' : rawPeriod + ':00'
-    const statusText = getText($el.find(status)).trim()
-
-    const { PROGRESS } = SUBMISSION_STRINGS.QUIZ
-    const hasSubmitted =
-      statusText !== '' && statusText !== '-' && !(PROGRESS as readonly string[]).some(s => statusText.includes(s))
-
-    return { id, title: quizTitle, endAt, hasSubmitted }
-  })
-}
-
-function checkQuizSubmissionDetail($: cheerio.CheerioAPI): boolean {
-  const { ICON_DONE, FINISHED, DONE } = SUBMISSION_STRINGS.QUIZ
-
-  if ($(ICON_DONE).length > 0) return true
-
-  const $summaryRows = $('.quizattemptsummary tbody tr')
-  if ($summaryRows.length > 0) {
-    let hasValidAttempt = false
-    const finishedKeywords = [...FINISHED, ...DONE]
-    $summaryRows.each((_, row) => {
-      const statusText = getText($(row).find('td.c0'))
-      if (finishedKeywords.some(keyword => statusText.includes(keyword))) {
-        hasValidAttempt = true
-      }
-    })
-    if (hasValidAttempt) return true
-  }
-
-  const mainContentText = getText($('#region-main'))
-  const submissionKeywords = [
-    ...FINISHED,
-    ...DONE,
-    '이미 응시하셨습니다',
-    '최고 점수:',
-    '성적:',
-    'Highest grade:',
-    'Grade:',
-  ]
-  if (submissionKeywords.some(keyword => mainContentText.includes(keyword))) {
-    return true
-  }
-
-  return false
-}
-
 export async function getAssignmentSubmitted(
   courseId: string,
 ): Promise<Array<Pick<Assignment, 'id' | 'title' | 'hasSubmitted' | 'endAt'>>> {
   try {
     const $ = await fetchAndParse(URL_PATTERNS.assignmentSubmitted(courseId))
-    return parseAssignmentSubmitted($)
+    const { container, divider, title, period, status } = DOM_SELECTORS.submissions.assignment
+    const { DONE } = SUBMISSION_STRINGS.ASSIGNMENT
+
+    return mapElement($(container), (_, el) => {
+      const $el = $(el)
+      if ($el.find(divider).length) return
+
+      const $title = $el.find(title)
+      const id = getLinkId(getAttr($title, 'href') || '')
+      const statusText = getText($el.find(status))
+      
+      return {
+        id,
+        title: getText($title),
+        endAt: getText($el.find(period)) + ':00',
+        hasSubmitted: (DONE as readonly string[]).some(keyword => statusText.includes(keyword)),
+      }
+    })
   } catch {
     return []
   }
 }
 
+/**
+ * MOOC/동영상 시청 현황을 가져옵니다.
+ */
 export async function getVideoSubmitted(
   courseId: string,
 ): Promise<Array<Pick<Video, 'title' | 'hasSubmitted' | 'sectionTitle' | 'progress' | 'id' | 'endAt'>>> {
@@ -241,44 +95,57 @@ export async function getVideoSubmitted(
       fetchAndParse(URL_PATTERNS.activities(courseId)),
     ])
 
-    const progressList = parseVideoSubmitted($progressPage)
+    // 1. 진행도 파싱
+    const { container, title, sectionTitle, requiredTime } = DOM_SELECTORS.submissions.video
+    const { COLLECTIVE, DONE: VIDEO_DONE } = SUBMISSION_STRINGS.VIDEO
+    let currentSectionTitle = ''
 
+    const progressList = mapElement($progressPage(container), (_, el) => {
+      const $el = $progressPage(el)
+      const iconSrc = $el.find('td img').attr('src') || ''
+      if (!iconSrc.includes('vod') || !iconSrc.includes('icon')) return
+
+      const originalTitle = $el.find(sectionTitle).attr('title')
+      if (originalTitle) currentSectionTitle = originalTitle
+
+      const videoTitle = getText($el.find(title))
+      const $std = $el.find(requiredTime)
+      const cellText = getText($std)
+
+      if ((COLLECTIVE as readonly string[]).some(s => cellText.includes(s))) {
+        return { title: videoTitle, hasSubmitted: true, progress: 100, sectionTitle: currentSectionTitle }
+      }
+
+      const requiredSec = timeToSeconds(getDirectText($std))
+      const studySec = timeToSeconds(getDirectText($std.next()))
+      const isCompletedBySymbol = (VIDEO_DONE as readonly string[]).includes(getText($el.find('td').last()))
+
+      const progress = requiredSec > 0 ? Math.min(Math.round((studySec / requiredSec) * 100), 100) : (isCompletedBySymbol ? 100 : 0)
+      const hasSubmitted = progress >= 100 || isCompletedBySymbol
+
+      return { title: videoTitle, hasSubmitted, progress, sectionTitle: currentSectionTitle }
+    })
+
+    // 2. 메타데이터(ID, 마감일) 매핑
     const moocMeta: Record<string, { id: string; endAt: string }> = {}
-
-    // 강의 오버뷰 페이지의 .modtype_vod 클래스 내부에서 정보 추출
     $overviewPage('.modtype_vod').each((_, el) => {
       const $el = $overviewPage(el)
       const $link = $el.find('.activityinstance a')
-      if ($link.length) {
-        // .instancename 텍스트에서 " 동영상" 또는 " Vod" 접미사 제거
-        const fullTitle = getText($el.find('.instancename'))
-        const title = fullTitle.replace(/\s*(동영상|Vod)$/i, '').trim()
+      if (!$link.length) return
 
-        const href = $link.attr('href') || ''
-        const id = getLinkId(href)
+      const title = getText($el.find('.instancename')).replace(/\s*(동영상|Vod)$/i, '').trim()
+      const periodText = getText($el.find('.displayoptions .text-ubstrap'))
+      const dateMatch = periodText.match(/~\s*(\d{4}-\d{2}-\d{2}(\s*\d{2}:\d{2}(:\d{2})?)?)/i)
 
-        const periodText = getText($el.find('.displayoptions .text-ubstrap'))
-        const dateMatch =
-          periodText.match(/~\s*(\d{4}-\d{2}-\d{2}\s*\d{2}:\d{2}:\d{2})/i) ||
-          periodText.match(/~\s*(\d{4}-\d{2}-\d{2}\s*\d{2}:\d{2})/i) ||
-          periodText.match(/~\s*(\d{4}-\d{2}-\d{2})/i)
+      let endAt = dateMatch ? dateMatch[1].trim() : ''
+      if (endAt && endAt.length === 10) endAt += ' 23:59:59'
 
-        let endAt = dateMatch ? dateMatch[1].trim() : ''
-        if (endAt && endAt.length === 10) endAt += ' 23:59:59'
-
-        if (title && id) {
-          moocMeta[normalizeString(title)] = { id, endAt }
-        }
-      }
+      moocMeta[normalizeString(title)] = { id: getLinkId($link.attr('href') || ''), endAt }
     })
 
     return progressList.map(item => {
       const meta = moocMeta[normalizeString(item.title)]
-      return {
-        ...item,
-        id: meta?.id || item.title,
-        endAt: meta?.endAt || '',
-      }
+      return { ...item, id: meta?.id || item.title, endAt: meta?.endAt || '' }
     })
   } catch (error) {
     console.error(`[Parser] Error fetching MOOC data for ${courseId}:`, error)
@@ -286,91 +153,95 @@ export async function getVideoSubmitted(
   }
 }
 
+/**
+ * 퀴즈 제출 현황을 가져옵니다.
+ */
 export async function getQuizSubmitted(
   courseId: string,
 ): Promise<Array<Pick<Quiz, 'id' | 'title' | 'hasSubmitted' | 'endAt'>>> {
   try {
     const $indexPage = await fetchAndParse(URL_PATTERNS.quizSubmitted(courseId))
-    const quizzes = parseQuizSubmitted($indexPage)
+    const { container, title, period, status } = DOM_SELECTORS.submissions.quiz
+    const { PROGRESS } = SUBMISSION_STRINGS.QUIZ
 
-    const updatedQuizzes = await Promise.all(
+    const quizzes = mapElement($indexPage(container), (_, el) => {
+      const $el = $indexPage(el)
+      const $title = $el.find(title)
+      if (!$title.length) return
+
+      const rawPeriod = getText($el.find(period)).trim()
+      const statusText = getText($el.find(status)).trim()
+
+      return {
+        id: getLinkId(getAttr($title, 'href')),
+        title: getText($title),
+        endAt: rawPeriod === '-' || !rawPeriod ? '' : rawPeriod + ':00',
+        hasSubmitted: statusText !== '' && statusText !== '-' && !(PROGRESS as readonly string[]).some(s => statusText.includes(s)),
+      }
+    })
+
+    // 퀴즈는 상세 페이지에서 마감일과 제출 여부를 더 정확히 확인해야 함
+    return await Promise.all(
       quizzes.map(async quiz => {
         try {
           const $detailPage = await fetchAndParse(`/mod/quiz/view.php?id=${quiz.id}`)
-          const isActuallySubmitted = checkQuizSubmissionDetail($detailPage)
           const mainContent = $detailPage('#region-main')
-          const timeInfo = mainContent.text()
-          const dueMatch = timeInfo.match(/Close:\s*([^\n,]+)/i) || timeInfo.match(/Closing date:\s*([^\n,]+)/i)
-          const endAt = dueMatch ? dueMatch[1].trim() : quiz.endAt
-
-          return { ...quiz, hasSubmitted: isActuallySubmitted, endAt }
+          const dueMatch = mainContent.text().match(/(Close|Closing date):\s*([^\n,]+)/i)
+          
+          return {
+            ...quiz,
+            hasSubmitted: checkQuizSubmissionDetail($detailPage),
+            endAt: dueMatch ? dueMatch[2].trim() : quiz.endAt,
+          }
         } catch {
           return quiz
         }
       }),
     )
-
-    return updatedQuizzes
   } catch {
     return []
   }
 }
 
-const normalizeString = (str: string) => str.replace(/[\s\W_]/g, '').toLowerCase()
+function checkQuizSubmissionDetail($: cheerio.CheerioAPI): boolean {
+  const { ICON_DONE, FINISHED, DONE } = SUBMISSION_STRINGS.QUIZ
+  if ($(ICON_DONE).length > 0) return true
+
+  const finishedKeywords = [...FINISHED, ...DONE]
+  const hasValidAttempt = $('.quizattemptsummary tbody tr').get().some(row => {
+    return finishedKeywords.some(keyword => getText($(row).find('td.c0')).includes(keyword))
+  })
+  if (hasValidAttempt) return true
+
+  const submissionKeywords = [...finishedKeywords, '이미 응시하셨습니다', '최고 점수:', '성적:', 'Highest grade:', 'Grade:']
+  return submissionKeywords.some(keyword => getText($('#region-main')).includes(keyword))
+}
 
 export async function getActivitiesPage(courseId: string): Promise<cheerio.CheerioAPI> {
   return fetchAndParse(URL_PATTERNS.activities(courseId))
 }
 
+/**
+ * 가져온 데이터들을 하나의 활동 리스트로 통합합니다.
+ */
 export async function getActivities(
   courseTitle: string,
   courseId: string,
   assignmentSubmittedArray: Array<Pick<Assignment, 'id' | 'title' | 'hasSubmitted' | 'endAt'>>,
   videoSubmittedArray: Array<Pick<Video, 'title' | 'hasSubmitted' | 'sectionTitle' | 'progress' | 'id' | 'endAt'>>,
   quizSubmittedArray: Array<Pick<Quiz, 'id' | 'title' | 'hasSubmitted' | 'endAt'>>,
-  _activitiesPage$?: cheerio.CheerioAPI,
 ): Promise<Activity[]> {
-  try {
-    const assignments: Assignment[] = assignmentSubmittedArray.map(a => ({
-      type: 'assignment',
-      id: a.id,
-      courseId,
-      courseTitle,
-      title: a.title,
-      startAt: '',
-      endAt: a.endAt,
-      hasSubmitted: a.hasSubmitted,
-    }))
+  const assignments: Assignment[] = assignmentSubmittedArray.map(a => ({
+    type: 'assignment', id: a.id, courseId, courseTitle, title: a.title, startAt: '', endAt: a.endAt, hasSubmitted: a.hasSubmitted,
+  }))
 
-    const videos: Mooc[] = videoSubmittedArray.map(v => ({
-      type: 'mooc',
-      id: v.id || `mooc-${courseId}-${normalizeString(v.title)}`,
-      courseId,
-      courseTitle,
-      title: v.title,
-      startAt: '',
-      endAt: v.endAt,
-      sectionTitle: v.sectionTitle,
-      hasSubmitted: v.hasSubmitted,
-      progress: v.progress ?? 0,
-    }))
+  const videos: Mooc[] = videoSubmittedArray.map(v => ({
+    type: 'mooc', id: v.id || `mooc-${courseId}-${normalizeString(v.title)}`, courseId, courseTitle, title: v.title, startAt: '', endAt: v.endAt, sectionTitle: v.sectionTitle, hasSubmitted: v.hasSubmitted, progress: v.progress ?? 0,
+  }))
 
-    const quizzes: Quiz[] = quizSubmittedArray.map(q => ({
-      type: 'quiz',
-      id: q.id,
-      courseId,
-      courseTitle,
-      title: q.title,
-      startAt: '',
-      endAt: q.endAt,
-      hasSubmitted: q.hasSubmitted,
-    }))
+  const quizzes: Quiz[] = quizSubmittedArray.map(q => ({
+    type: 'quiz', id: q.id, courseId, courseTitle, title: q.title, startAt: '', endAt: q.endAt, hasSubmitted: q.hasSubmitted,
+  }))
 
-    const allActivities = [...assignments, ...videos, ...quizzes]
-
-    return allActivities
-  } catch (error) {
-    console.error(`[Parser] Error merging activities for ${courseId}:`, error)
-    return []
-  }
+  return [...assignments, ...videos, ...quizzes]
 }

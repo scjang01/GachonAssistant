@@ -31,51 +31,50 @@ export const useContentsFetcher = () => {
 
     try {
       // 1. 과목 리스트를 한국어로 가져옴
-      // fetchAndParse 내부에서 로그인 필요 시 'LOGIN_REQUIRED' 에러를 던집니다.
       const courseList = await getCourses()
 
       if (courseList.length === 0) {
-        // 성공적으로 접속했으나(로그인 상태) 과목이 정말 없는 경우
         await updateData('meta', prev => ({ ...prev, updateAt: new Date().toISOString() }))
         toast.error('수강 중인 과목을 찾을 수 없습니다.')
         return
       }
 
-      const maxPos = courseList.length * 4
-      let curPos = 0
+      // 2. 모든 과목의 활동 내용을 병렬로 가져옴 (성능 최적화)
+      const maxCourses = courseList.length
+      const results = await Promise.all(
+        courseList.map(async course => {
+          try {
+            const [assignmentSubmittedArray, videoSubmittedArray, quizSubmittedArray, activitiesPage$] =
+              await Promise.all([
+                getAssignmentSubmitted(course.id),
+                getVideoSubmitted(course.id),
+                getQuizSubmitted(course.id),
+                getActivitiesPage(course.id),
+              ])
 
-      const activityList: Activity[] = []
-      for (const course of courseList) {
-        try {
-          // 2. 활동 내용은 파싱을 위해 영어로 가져옴
-          const [assignmentSubmittedArray, videoSubmittedArray, quizSubmittedArray, activitiesPage$] = await Promise.all([
-            getAssignmentSubmitted(course.id),
-            getVideoSubmitted(course.id),
-            getQuizSubmitted(course.id),
-            getActivitiesPage(course.id),
-          ])
+            const activities = await getActivities(
+              course.title,
+              course.id,
+              assignmentSubmittedArray,
+              videoSubmittedArray,
+              quizSubmittedArray,
+            )
 
-          const activities = await getActivities(
-            course.title,
-            course.id,
-            assignmentSubmittedArray,
-            videoSubmittedArray,
-            quizSubmittedArray,
-            activitiesPage$,
-          )
-          activityList.push(...activities)
-        } catch (courseError) {
-          // 개별 과목 실패 시 (이미 한 번 getCourses를 통과했으므로 로그인 에러일 확률은 낮음)
-          console.error(`Failed to fetch course ${course.title}:`, courseError)
-          // 만약 여기서도 로그인 에러가 발생한다면 상위 catch로 던짐
-          if (courseError instanceof Error && courseError.message === 'LOGIN_REQUIRED') {
-            throw courseError
+            return activities
+          } catch (courseError) {
+            console.error(`Failed to fetch course ${course.title}:`, courseError)
+            if (courseError instanceof Error && courseError.message === 'LOGIN_REQUIRED') {
+              throw courseError
+            }
+            return []
+          } finally {
+            // 진행률 업데이트 (5%에서 시작하여 95%까지)
+            setProgress(prev => Math.min(prev + 90 / maxCourses, 95))
           }
-        } finally {
-          curPos += 4
-          setProgress((curPos / maxPos) * 100)
-        }
-      }
+        }),
+      )
+
+      const activityList = results.flat()
 
       // 3. 모든 데이터를 완벽히 성공적으로 가져온 경우에만 저장소 업데이트
       await updateData('contents', () => ({
@@ -89,7 +88,6 @@ export const useContentsFetcher = () => {
 
       toast.success('데이터가 성공적으로 업데이트되었습니다.')
     } catch (error) {
-      // 동기화 실패 시 예외 처리
       if (error instanceof Error && error.message === 'LOGIN_REQUIRED') {
         toast.error('사이버캠퍼스 세션이 만료되었습니다. 로그인이 필요합니다.', {
           icon: '🔒',
@@ -106,7 +104,6 @@ export const useContentsFetcher = () => {
   }
 
   useEffect(() => {
-    // 자동 갱신 시도
     if (isInitialized && shouldRefresh) {
       fetchContents()
     }

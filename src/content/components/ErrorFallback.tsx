@@ -1,18 +1,20 @@
-import { Copy } from 'lucide-react'
 import { useState } from 'react'
-import toast from 'react-hot-toast'
 
 import { ToastContainer } from './ToastContainer'
 import packageJson from '../../../package.json'
-import { createSnapshots } from '@/apis/snapshots'
 import { useStorageStore } from '@/storage/useStorageStore'
-import { cn } from '@/utils'
 
 import type { FallbackProps } from 'react-error-boundary'
 
 export function ErrorFallback({ error }: FallbackProps) {
-  const { resetStore } = useStorageStore()
-  const [isErrorReported, setIsErrorReported] = useState(false)
+  const resetStore = useStorageStore(state => state.resetStore)
+  const [isCopied, setIsCopied] = useState(false)
+
+  const handleCopy = () => {
+    navigator.clipboard.writeText(error.stack || error.message)
+    setIsCopied(true)
+    setTimeout(() => setIsCopied(false), 2000)
+  }
 
   return (
     <div>
@@ -26,47 +28,26 @@ export function ErrorFallback({ error }: FallbackProps) {
           <div className="whitespace-pre-line break-words text-xl font-bold text-gray-800">
             확장 프로그램에 문제가 발생했어요 😢
           </div>
-          <div className="relative mt-4 h-124px w-full overflow-hidden whitespace-pre-wrap rounded-lg bg-white p-4 text-left text-12px text-gray-500">
-            <button
-              onClick={() => navigator.clipboard.writeText(error.stack)}
-              className="absolute right-4 top-4 rounded-lg bg-white bg-opacity-50 p-2 backdrop-blur-sm"
-            >
-              <Copy size={16} />
-            </button>
+          <div className="relative mt-4 h-200px w-full overflow-hidden whitespace-pre-wrap rounded-lg bg-white p-4 text-left text-12px text-gray-500">
             <div className="h-full overflow-auto">
-              <pre className="whitespace-pre-wrap break-words">{error.stack}</pre>
+              <pre className="whitespace-pre-wrap break-words">{error.stack || error.message}</pre>
             </div>
           </div>
-          <div className="flex gap-16px">
+          <div className="mt-16px flex w-full gap-8px">
+            <button
+              onClick={handleCopy}
+              className="flex-1 rounded-lg bg-gray-200 py-10px text-14px font-bold text-gray-700 transition-colors hover:bg-gray-300"
+            >
+              {isCopied ? '복사됨!' : '에러 내용 복사'}
+            </button>
             <button
               onClick={() => {
                 resetStore()
                 window.location.reload()
               }}
-              className="mt-16px rounded-lg bg-rose-400 px-12px py-8px font-bold text-white"
+              className="flex-1 rounded-lg bg-rose-400 py-10px text-14px font-bold text-white transition-colors hover:bg-rose-500"
             >
               다시 시작하기
-            </button>
-
-            <button
-              onClick={async () => {
-                try {
-                  setIsErrorReported(true)
-                  await createSnapshots()
-                  toast.success('에러 보고가 성공적으로 완료되었습니다.')
-                } catch (error) {
-                  console.error('에러 보고 중 오류 발생:', error)
-                  toast.error('에러 보고에 실패했습니다.')
-                  setIsErrorReported(false)
-                }
-              }}
-              className={cn(
-                'mt-16px rounded-lg bg-blue-400 px-12px py-8px font-bold text-white',
-                isErrorReported && 'opacity-50',
-              )}
-              disabled={isErrorReported}
-            >
-              에러 보고하기
             </button>
           </div>
           <div className="mt-16px text-sm text-gray-500">버전: {packageJson.version}</div>

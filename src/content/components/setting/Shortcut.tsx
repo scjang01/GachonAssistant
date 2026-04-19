@@ -21,7 +21,9 @@ const formatShortcutForDisplay = (shortcut: string) => {
 }
 
 export function Shortcut() {
-  const { settings, updateData } = useStorageStore()
+  const settings = useStorageStore(state => state.settings)
+  const updateData = useStorageStore(state => state.updateData)
+  
   const { isEditing, setIsEditing } = useShortcutStore()
   const [tempShortcut, setTempShortcut] = useState('')
   const [errorMessage, setErrorMessage] = useState('')

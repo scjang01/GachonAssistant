@@ -50,7 +50,7 @@ type Props = {
   task: Activity
 }
 
-const typeMap: Record<string, string> = {
+const TYPE_MAP: Record<string, string> = {
   assignment: '과제',
   video: '동영상',
   quiz: '퀴즈',
@@ -58,17 +58,16 @@ const typeMap: Record<string, string> = {
 }
 
 export function TaskCard({ task }: Props) {
-  const { updateData } = useStorageStore()
-  const endAtDate = task.endAt ? new Date(task.endAt) : new Date(NaN)
+  const updateData = useStorageStore(state => state.updateData)
+  
+  const endAtDate = useMemo(() => (task.endAt ? new Date(task.endAt) : new Date(NaN)), [task.endAt])
   const isValidDate = !isNaN(endAtDate.getTime())
 
   // 서버 갱신 없이 시간만 실시간으로 업데이트하기 위한 상태
   const [now, setNow] = useState(new Date())
 
   useEffect(() => {
-    const timer = setInterval(() => {
-      setNow(new Date())
-    }, 1000 * 60) // 1분마다 갱신
+    const timer = setInterval(() => setNow(new Date()), 1000 * 60) // 1분마다 갱신
     return () => clearInterval(timer)
   }, [])
 
@@ -83,27 +82,17 @@ export function TaskCard({ task }: Props) {
     }))
   }
 
-  const getDeadlineText = () => {
+  const deadlineText = useMemo(() => {
     if (!isValidDate) return '기한 없음'
+    if (status === 'submitted') return <span>{format(endAtDate, 'MM/dd')}까지</span>
+    if (status === 'expired') return <span>{format(endAtDate, 'MM/dd HH:mm')}까지</span>
 
-    // 완료된 태스크: 날짜만 표시
-    if (status === 'submitted') {
-      return <span>{format(endAtDate, 'MM/dd')}까지</span>
-    }
-
-    // 마감 지난 태스크: 날짜 + 시분 표시
-    if (status === 'expired') {
-      return <span>{format(endAtDate, 'MM/dd HH:mm')}까지</span>
-    }
-
-    // 진행 중 / 마감 임박: 남은 시간 계산
     const totalMinutes = differenceInMinutes(endAtDate, now)
     if (totalMinutes <= 0) return <span>{format(endAtDate, 'MM/dd HH:mm')}까지</span>
 
     const days = Math.floor(totalMinutes / (60 * 24))
     const hours = Math.floor((totalMinutes % (60 * 24)) / 60)
     const mins = totalMinutes % 60
-
     const relativeText = days > 0 ? `${days}일 전` : `${hours}시간 ${mins}분 전`
 
     return (
@@ -114,27 +103,23 @@ export function TaskCard({ task }: Props) {
         </span>
       </div>
     )
-  }
+  }, [isValidDate, status, endAtDate, now])
 
-  const getExactDeadline = () =>
+  const exactDeadline = useMemo(() => 
     isValidDate ? format(endAtDate, 'yyyy년 MM월 dd일 HH:mm', { locale: ko }) : '기한 없음'
+  , [isValidDate, endAtDate])
 
-  const getModPath = () => {
-    switch (task.type) {
-      case 'assignment':
-        return 'assign'
-      case 'video':
-        return 'vod'
-      case 'quiz':
-        return 'quiz'
-      case 'mooc':
-        return 'vod'
-      default:
-        return 'assign'
+  const taskLink = useMemo(() => {
+    const getModPath = () => {
+      switch (task.type) {
+        case 'assignment': return 'assign'
+        case 'video': case 'mooc': return 'vod'
+        case 'quiz': return 'quiz'
+        default: return 'assign'
+      }
     }
-  }
-
-  const taskLink = `${origin}/mod/${getModPath()}/view.php?id=${task.id}`
+    return `${origin}/mod/${getModPath()}/view.php?id=${task.id}`
+  }, [task.type, task.id])
 
   return (
     <a href={taskLink} target="_blank" rel="noopener noreferrer" className="block">
@@ -165,7 +150,7 @@ export function TaskCard({ task }: Props) {
               <div className="flex flex-1 flex-col">
                 <h3 className="mb-2px flex-1 break-keep text-14px font-semibold text-gray-700">{task.title}</h3>
                 <span className="text-11px text-gray-500">
-                  {task.courseTitle} · {typeMap[task.type]}
+                  {task.courseTitle} · {TYPE_MAP[task.type]}
                 </span>
               </div>
             </div>
@@ -206,10 +191,10 @@ export function TaskCard({ task }: Props) {
               'd-tooltip d-tooltip-right flex cursor-help items-center text-12px font-medium',
               status === 'expired' ? 'text-gray-500' : 'text-gray-700',
             )}
-            data-tip={getExactDeadline()}
+            data-tip={exactDeadline}
           >
             <Clock size={14} className="mr-1 inline-block" />
-            <div className="ml-4px">{getDeadlineText()}</div>
+            <div className="ml-4px">{deadlineText}</div>
           </div>
           <StatusBadge task={task} status={status} />
         </div>
