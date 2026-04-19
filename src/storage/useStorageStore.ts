@@ -6,6 +6,9 @@ import { filterActivities } from '@/content/components/task/filterActivities'
 import type { Activity, StorageData } from '@/types'
 import { isMac } from '@/utils'
 
+/**
+ * 앱의 전역 상태를 관리하고 로컬 스토리지와 동기화하는 Zustand 스토어
+ */
 interface StorageStore extends StorageData {
   isInitialized: boolean
   initialize: () => Promise<void>
@@ -20,7 +23,7 @@ const initialStorageData: StorageData = {
   filterOptions: { statuses: [], courseIds: [], categories: [] },
   manualOverrides: {},
   settings: {
-    refreshInterval: 1000 * 60 * 20,
+    refreshInterval: 1000 * 60 * 30,
     trigger: {
       type: 'color',
       color: '#3b82f6',
@@ -29,6 +32,9 @@ const initialStorageData: StorageData = {
   },
 }
 
+/**
+ * 초기 데이터와 저장된 데이터를 안전하게 병합합니다.
+ */
 const mergeData = (initial: StorageData, stored: Partial<StorageData>): StorageData => ({
   meta: { ...initial.meta, ...stored.meta, version: packageJson.version },
   contents: { ...initial.contents, ...stored.contents },
@@ -41,6 +47,7 @@ export const useStorageStore = create<StorageStore>((set, get) => ({
   ...initialStorageData,
   isInitialized: false,
 
+  /** 스토리지로부터 데이터를 불러와 초기화합니다. */
   initialize: async () => {
     const storedData = await chromeStorageClient.getData()
     const mergedData = mergeData(initialStorageData, storedData)
@@ -49,10 +56,11 @@ export const useStorageStore = create<StorageStore>((set, get) => ({
     set({ ...mergedData, isInitialized: true })
   },
 
+  /** 특정 키의 데이터를 업데이트하고 스토리지에 즉시 저장합니다. */
   updateData: async <K extends keyof StorageData>(key: K, updater: (prev: StorageData[K]) => StorageData[K]) => {
     const updatedData = updater(get()[key])
 
-    // activityList 업데이트 시 manualOverrides 정리
+    // 과제 목록 업데이트 시, 실제 상태와 동일해진 수동 체크(override) 항목은 자동 정리합니다.
     if (key === 'contents') {
       const { activityList } = updatedData as StorageData['contents']
       const currentOverrides = { ...get().manualOverrides }
@@ -75,6 +83,7 @@ export const useStorageStore = create<StorageStore>((set, get) => ({
     set(state => ({ ...state, [key]: updatedData }))
   },
 
+  /** 필터 및 검색어 조건에 맞는 과제 리스트를 반환합니다. */
   getFilteredActivities: (searchQuery: string) => {
     const { activityList } = get().contents
     const { manualOverrides, filterOptions } = get()
@@ -92,14 +101,17 @@ export const useStorageStore = create<StorageStore>((set, get) => ({
       })
   },
 
+  /** 모든 설정을 초기화합니다. */
   resetStore: async () => {
     await chromeStorageClient.setData(initialStorageData)
     set({ ...initialStorageData, isInitialized: true })
   },
 }))
 
+// 스토어 생성 즉시 초기화 실행
 useStorageStore.getState().initialize()
 
+// 크롬 스토리지 변경 감지: 다른 탭에서 변경된 사항을 실시간 반영합니다.
 chromeStorageClient.onStorageChanged(changes => {
   const newState = Object.entries(changes).reduce((acc, [key, { newValue }]) => {
     if (key in initialStorageData) {

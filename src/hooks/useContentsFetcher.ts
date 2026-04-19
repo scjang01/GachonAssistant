@@ -4,7 +4,6 @@ import toast from 'react-hot-toast'
 import { useRefreshCheck } from './useRefreshCheck'
 import {
   getActivities,
-  getActivitiesPage,
   getAssignmentSubmitted,
   getCourses,
   getQuizSubmitted,
@@ -15,22 +14,25 @@ import { URL_PATTERNS } from '@/services/parser/constants'
 import { useStorageStore } from '@/storage/useStorageStore'
 import type { Activity } from '@/types'
 
+/**
+ * 사이버캠퍼스 데이터를 크롤링하여 저장소에 동기화하는 커스텀 훅
+ */
 export const useContentsFetcher = () => {
   const [isLoading, setIsLoading] = useState(false)
   const [progress, setProgress] = useState(0)
+  const [syncStatus, setSyncStatus] = useState('')
   const { updateData, isInitialized } = useStorageStore()
   const { shouldRefresh } = useRefreshCheck()
 
   const fetchContents = async () => {
-    if (isLoading || !isInitialized) {
-      return
-    }
+    if (isLoading || !isInitialized) return
 
     setIsLoading(true)
     setProgress(5)
+    setSyncStatus('과목 목록을 가져오는 중...')
 
     try {
-      // 1. 과목 리스트를 한국어로 가져옴
+      // 1. 수강 중인 과목 리스트 획득
       const courseList = await getCourses()
 
       if (courseList.length === 0) {
@@ -39,17 +41,20 @@ export const useContentsFetcher = () => {
         return
       }
 
-      // 2. 모든 과목의 활동 내용을 병렬로 가져옴 (성능 최적화)
+      setSyncStatus(`총 ${courseList.length}개의 과목 분석 시작...`)
+
+      // 2. 과목별 활동 내역 병렬 크롤링 (성능 최적화)
       const maxCourses = courseList.length
+      let completedCount = 0
+
       const results = await Promise.all(
         courseList.map(async course => {
           try {
-            const [assignmentSubmittedArray, videoSubmittedArray, quizSubmittedArray, activitiesPage$] =
+            const [assignmentSubmittedArray, videoSubmittedArray, quizSubmittedArray] =
               await Promise.all([
                 getAssignmentSubmitted(course.id),
                 getVideoSubmitted(course.id),
                 getQuizSubmitted(course.id),
-                getActivitiesPage(course.id),
               ])
 
             const activities = await getActivities(
@@ -60,54 +65,59 @@ export const useContentsFetcher = () => {
               quizSubmittedArray,
             )
 
+            completedCount++
+            setSyncStatus(`[${completedCount}/${maxCourses}] ${course.title} 분석 완료`)
+            setProgress(5 + (completedCount / maxCourses) * 90)
+
             return activities
           } catch (courseError) {
             console.error(`Failed to fetch course ${course.title}:`, courseError)
             if (courseError instanceof Error && courseError.message === 'LOGIN_REQUIRED') {
               throw courseError
             }
+            completedCount++
             return []
-          } finally {
-            // 진행률 업데이트 (5%에서 시작하여 95%까지)
-            setProgress(prev => Math.min(prev + 90 / maxCourses, 95))
           }
         }),
       )
 
       const activityList = results.flat()
+      setSyncStatus('데이터 저장 중...')
 
-      // 3. 모든 데이터를 완벽히 성공적으로 가져온 경우에만 저장소 업데이트
+      // 3. 트랜잭션: 모든 크롤링이 성공했을 때만 로컬 저장소 업데이트
       await updateData('contents', () => ({
         courseList: [{ id: '-1', title: '전체 과목' }, ...courseList],
         activityList,
       }))
       await updateData('meta', prev => ({ ...prev, updateAt: new Date().toISOString() }))
 
-      // 언어 설정 복구 (세션 유지용)
+      // 언어 설정 복구 및 세션 유지
       await fetchAndParse(URL_PATTERNS.courses, 'ko')
 
-      toast.success('데이터가 성공적으로 업데이트되었습니다.')
+      toast.success('동기화가 완료되었습니다.')
     } catch (error) {
       if (error instanceof Error && error.message === 'LOGIN_REQUIRED') {
-        toast.error('사이버캠퍼스 세션이 만료되었습니다. 로그인이 필요합니다.', {
+        toast.error('세션이 만료되었습니다. 다시 로그인해 주세요.', {
           icon: '🔒',
           duration: 4000,
         })
       } else {
-        toast.error('동기화 중 오류가 발생했습니다. 기존 데이터를 표시합니다.')
+        toast.error('동기화 중 오류가 발생했습니다.')
       }
       console.error('Sync failed:', error)
     } finally {
       setIsLoading(false)
       setProgress(0)
+      setSyncStatus('')
     }
   }
 
   useEffect(() => {
+    // 자동 갱신 트리거
     if (isInitialized && shouldRefresh) {
       fetchContents()
     }
   }, [isInitialized, shouldRefresh])
 
-  return { refetch: fetchContents, isLoading, progress }
+  return { refetch: fetchContents, isLoading, progress, syncStatus }
 }

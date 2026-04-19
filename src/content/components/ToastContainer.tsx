@@ -1,50 +1,50 @@
-import { ToastBar, Toaster } from 'react-hot-toast'
+import { Toaster } from 'react-hot-toast'
 
 export function ToastContainer() {
   return (
     <Toaster
-      containerStyle={{ bottom: 100 }}
+      position="top-center"
+      reverseOrder={false}
+      gutter={8}
+      containerClassName=""
+      containerStyle={{
+        top: 24,
+      }}
       toastOptions={{
-        position: 'bottom-center',
+        // 기본 스타일 최적화
+        className: 'text-13px font-bold shadow-xl border border-gray-100',
+        duration: 3000,
+        style: {
+          background: '#fff',
+          color: '#374151',
+          padding: '12px 18px',
+          borderRadius: '16px',
+        },
+
+        // 성공 토스트 스타일
         success: {
           duration: 3000,
+          iconTheme: {
+            primary: '#10b981',
+            secondary: '#fff',
+          },
           style: {
-            backgroundColor: 'rgba(133, 239, 133, 0.5)',
-            border: '1px solid rgba(133, 239, 133, 0.5)',
+            borderLeft: '5px solid #10b981',
           },
         },
+
+        // 에러 토스트 스타일
         error: {
-          duration: 3000,
-          style: {
-            backgroundColor: 'rgba(239, 133, 133, 0.5)',
-            border: '1px solid rgba(239, 133, 133, 0.5)',
+          duration: 4000,
+          iconTheme: {
+            primary: '#ef4444',
+            secondary: '#fff',
           },
-        },
-        style: {
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          padding: '4px 8px',
-          height: '40px',
-          width: '200px',
-          maxWidth: '200px',
-          overflow: 'hidden',
-          borderRadius: '24px',
-          fontSize: '11px',
-          boxShadow: '0 0 100px rgba(0, 0, 0, 0.1)',
-          backdropFilter: 'blur(10px)',
+          style: {
+            borderLeft: '5px solid #ef4444',
+          },
         },
       }}
-    >
-      {t => (
-        <ToastBar
-          toast={t}
-          style={{
-            ...t.style,
-            animation: t.visible ? 'fadein 0.5s' : 'fadeout 1s',
-          }}
-        />
-      )}
-    </Toaster>
+    />
   )
 }

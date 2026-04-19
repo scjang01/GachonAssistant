@@ -25,15 +25,37 @@ const CATEGORY_MAP: Record<string, string> = {
   mooc: 'MOOC',
 }
 
+const STATUS_STYLES: Record<string, { active: string; inactive: string; label: string }> = {
+  ongoing: {
+    active: 'bg-blue-600 text-white shadow-md',
+    inactive: 'bg-blue-50 text-blue-700 hover:bg-blue-100',
+    label: '진행 중',
+  },
+  imminent: {
+    active: 'bg-orange-600 text-white shadow-md',
+    inactive: 'bg-orange-50 text-orange-700 hover:bg-orange-100',
+    label: '마감 임박',
+  },
+  expired: {
+    active: 'bg-red-600 text-white shadow-md',
+    inactive: 'bg-red-50 text-red-700 hover:bg-red-100',
+    label: '마감 지남',
+  },
+  submitted: {
+    active: 'bg-emerald-600 text-white shadow-md',
+    inactive: 'bg-emerald-50 text-emerald-700 hover:bg-emerald-100',
+    label: '완료',
+  },
+}
+
 export function TaskContent() {
   const [searchQuery, setSearchQuery] = useState('')
   const [isFilterOpen, setIsFilterOpen] = useState(false)
   const scrollRef = useRef<HTMLDivElement>(null)
 
-  // Granular store subscription for performance
   const meta = useStorageStore(state => state.meta)
   
-  const { progress, isLoading, refetch } = useContentsFetcher()
+  const { progress, isLoading, refetch, syncStatus } = useContentsFetcher()
   const { filteredTasks, summary, toggleFilter, removeFilter, filterOptions, courseList } = useTaskFilter(searchQuery)
 
   const formattedUpdateTime = formatDistanceToNowStrict(new Date(meta.updateAt), { addSuffix: true, locale: ko })
@@ -71,24 +93,17 @@ export function TaskContent() {
         </div>
 
         <div className="mb-12px flex gap-4px">
-          {[
-            { key: 'ongoing', color: 'blue', label: '진행 중' },
-            { key: 'imminent', color: 'orange', label: '마감 임박' },
-            { key: 'expired', color: 'red', label: '마감 지남' },
-            { key: 'submitted', color: 'emerald', label: '완료' },
-          ].map(({ key, color, label }) => (
+          {Object.entries(STATUS_STYLES).map(([key, style]) => (
             <button
               key={key}
               className={cn(
                 'flex flex-1 flex-col items-center justify-center rounded-lg py-8px transition-all duration-200 active:scale-95',
-                filterOptions.statuses.includes(key as ActivityStatus)
-                  ? `bg-${color}-600 text-white shadow-md`
-                  : `bg-${color}-50 text-${color}-700 hover:bg-${color}-100`,
+                filterOptions.statuses.includes(key as ActivityStatus) ? style.active : style.inactive,
               )}
               onClick={() => toggleFilter('statuses', key as ActivityStatus)}
             >
               <span className="text-16px font-bold">{summary[key as keyof typeof summary]}</span>
-              <span className="text-9px font-medium opacity-80">{label}</span>
+              <span className="text-9px font-medium opacity-80">{style.label}</span>
             </button>
           ))}
         </div>
@@ -156,20 +171,31 @@ export function TaskContent() {
         </AnimatePresence>
       </div>
 
+      {/* 실시간 로딩 바 및 상태 안내 */}
       <AnimatePresence>
         {isLoading && (
           <motion.div
-            initial={{ opacity: 0, scaleY: 0 }}
-            animate={{ opacity: 1, scaleY: 1 }}
-            exit={{ opacity: 0, scaleY: 0 }}
-            className="z-50 h-4px w-full origin-top bg-blue-100"
+            initial={{ opacity: 0, height: 0 }}
+            animate={{ opacity: 1, height: 'auto' }}
+            exit={{ opacity: 0, height: 0 }}
+            className="z-50 w-full overflow-hidden bg-blue-50"
           >
-            <motion.div
-              className="h-full bg-blue-600 shadow-[0_0_100px_rgba(37,99,235,0.8)]"
-              initial={{ width: '5%' }}
-              animate={{ width: `${Math.max(progress, 5)}%` }}
-              transition={{ duration: 0.3 }}
-            />
+            <div className="flex items-center justify-between px-16px py-6px">
+              <span className="animate-pulse text-10px font-bold text-blue-600">
+                {syncStatus || '준비 중...'}
+              </span>
+              <span className="text-10px font-black text-blue-400">
+                {Math.round(progress)}%
+              </span>
+            </div>
+            <div className="h-4px w-full bg-blue-100">
+              <motion.div
+                className="h-full bg-blue-600 shadow-[0_0_15px_rgba(37,99,235,0.6)]"
+                initial={{ width: '5%' }}
+                animate={{ width: `${Math.max(progress, 5)}%` }}
+                transition={{ duration: 0.3 }}
+              />
+            </div>
           </motion.div>
         )}
       </AnimatePresence>

@@ -3,6 +3,9 @@ import { useMemo } from 'react'
 import { useStorageStore } from '@/storage/useStorageStore'
 import { getTaskStatus } from '@/utils'
 
+/**
+ * 과제 리스트의 필터링 및 요약 통계를 처리하는 커스텀 훅
+ */
 export const useTaskFilter = (searchQuery: string) => {
   const contents = useStorageStore(state => state.contents)
   const filterOptions = useStorageStore(state => state.filterOptions)
@@ -10,7 +13,6 @@ export const useTaskFilter = (searchQuery: string) => {
   const getFilteredActivities = useStorageStore(state => state.getFilteredActivities)
   const updateData = useStorageStore(state => state.updateData)
 
-  // BUG FIX: contents와 filterOptions가 바뀔 때도 필터링이 다시 수행되어야 합니다.
   const filteredTasks = useMemo(
     () => getFilteredActivities(searchQuery),
     [getFilteredActivities, searchQuery, contents, filterOptions, manualOverrides],
@@ -24,8 +26,10 @@ export const useTaskFilter = (searchQuery: string) => {
         const hasSubmitted = manualOverrides[task.id] !== undefined ? manualOverrides[task.id] : task.hasSubmitted
         const taskWithOverride = { ...task, hasSubmitted }
 
+        // 1. 과목 필터
         if (filterOptions.courseIds.length > 0 && !filterOptions.courseIds.includes(task.courseId)) return acc
         
+        // 2. 카테고리 필터 (동영상/MOOC 통합 처리)
         if (filterOptions.categories.length > 0) {
           const isVideo = task.type === 'video' || task.type === 'mooc'
           const categoryMatch = filterOptions.categories.some(
@@ -34,11 +38,13 @@ export const useTaskFilter = (searchQuery: string) => {
           if (!categoryMatch) return acc
         }
 
+        // 3. 검색어 필터
         if (searchQuery) {
           const query = searchQuery.toLowerCase()
           if (!task.title.toLowerCase().includes(query) && !task.courseTitle.toLowerCase().includes(query)) return acc
         }
 
+        // 4. 상태별 통계 산출
         const status = getTaskStatus(taskWithOverride, now)
         if (status === 'submitted') acc.submitted++
         else if (status === 'ongoing' || status === 'no-deadline') acc.ongoing++
