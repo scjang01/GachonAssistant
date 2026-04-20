@@ -97,18 +97,27 @@ chrome.action.onClicked.addListener(async tab => {
   if (!tab.id) return
 
   try {
+    // 1. 이미 대시보드가 주입되어 있는지 확인
     await chrome.tabs.sendMessage(tab.id, { action: 'toggle-dashboard' })
   } catch (e) {
-    try {
-      await chrome.scripting.executeScript({
-        target: { tabId: tab.id },
-        files: ['src/content/index.tsx'],
-      })
-      setTimeout(() => {
-        chrome.tabs.sendMessage(tab.id!, { action: 'toggle-dashboard' })
-      }, 150)
-    } catch (scriptError) {
-      console.error('Failed to inject script:', scriptError)
+    // 2. 에러가 나면 스크립트가 아직 없는 것이므로 동적 주입 (activeTab 권한 활용)
+    const manifest = chrome.runtime.getManifest()
+    // CRXJS가 빌드한 실제 번들 파일 경로를 매니페스트에서 동적으로 가져옵니다.
+    const contentScriptPath = manifest.content_scripts?.[0]?.js?.[0]
+
+    if (contentScriptPath) {
+      try {
+        await chrome.scripting.executeScript({
+          target: { tabId: tab.id },
+          files: [contentScriptPath],
+        })
+        // 주입 후 약간의 대기 후 메시지 전송
+        setTimeout(() => {
+          chrome.tabs.sendMessage(tab.id!, { action: 'toggle-dashboard' })
+        }, 150)
+      } catch (scriptError) {
+        console.error('Failed to inject script:', scriptError)
+      }
     }
   }
 })
