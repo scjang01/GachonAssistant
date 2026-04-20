@@ -46,6 +46,7 @@ export const useContentsFetcher = () => {
       // 2. 과목별 활동 내역 병렬 크롤링 (성능 최적화)
       const maxCourses = courseList.length
       let completedCount = 0
+      let errorCount = 0
 
       const results = await Promise.all(
         courseList.map(async course => {
@@ -76,6 +77,7 @@ export const useContentsFetcher = () => {
               throw courseError
             }
             completedCount++
+            errorCount++
             return []
           }
         }),
@@ -94,7 +96,13 @@ export const useContentsFetcher = () => {
       // 언어 설정 복구 및 세션 유지
       await fetchAndParse(URL_PATTERNS.courses, 'ko')
 
-      toast.success('동기화가 완료되었습니다.')
+      if (errorCount > 0) {
+        toast.error(`${errorCount}개의 과목 데이터를 가져오지 못했습니다.\n학교 사이트 구조가 변경되었을 수 있습니다.`, {
+          duration: 5000,
+        })
+      } else {
+        toast.success('동기화가 완료되었습니다.')
+      }
     } catch (error) {
       if (error instanceof Error && error.message === 'LOGIN_REQUIRED') {
         toast.error('세션이 만료되었습니다. 다시 로그인해 주세요.', {

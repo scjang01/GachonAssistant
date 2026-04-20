@@ -32,7 +32,7 @@ export default defineManifest(async () => ({
   },
   content_scripts: [
     {
-      matches: ['<all_urls>'],
+      matches: ['*://cyber.gachon.ac.kr/*'],
       exclude_matches: UNIVERSITY_LINK_LIST.flatMap(univ => [
         `${univ}/login.php*`,
         `${univ}/mod/ubfile/viewer.php*`,
@@ -63,8 +63,14 @@ export default defineManifest(async () => ({
     },
   ],
   content_security_policy: {
-    extension_pages: "script-src 'self' 'wasm-unsafe-eval' http://localhost:* http://127.0.0.1:*; object-src 'self';",
+    // 배포 모드에서는 localhost 관련 CSP를 제거합니다.
+    extension_pages: isDev 
+      ? "script-src 'self' 'wasm-unsafe-eval' http://localhost:* http://127.0.0.1:*; object-src 'self';"
+      : "script-src 'self'; object-src 'self';",
   },
-  host_permissions: ['<all_urls>', 'http://localhost:*', 'http://127.0.0.1:*'],
-  permissions: ['storage', 'unlimitedStorage', 'scripting', 'activeTab'],
+  // 배포 모드에서는 localhost 권한을 제거합니다.
+  host_permissions: isDev 
+    ? ['*://cyber.gachon.ac.kr/*', 'http://localhost:*', 'http://127.0.0.1:*']
+    : ['*://cyber.gachon.ac.kr/*'],
+  permissions: ['storage', 'unlimitedStorage', 'scripting', 'activeTab', 'alarms'],
 }))

@@ -181,23 +181,34 @@ export async function getQuizSubmitted(
     })
 
     // 퀴즈는 상세 페이지에서 마감일과 제출 여부를 더 정확히 확인해야 함
-    return await Promise.all(
-      quizzes.map(async quiz => {
-        try {
-          const $detailPage = await fetchAndParse(`/mod/quiz/view.php?id=${quiz.id}`)
-          const mainContent = $detailPage('#region-main')
-          const dueMatch = mainContent.text().match(/(Close|Closing date):\s*([^\n,]+)/i)
-          
-          return {
-            ...quiz,
-            hasSubmitted: checkQuizSubmissionDetail($detailPage),
-            endAt: dueMatch ? dueMatch[2].trim() : quiz.endAt,
+    // 리소스 최적화: 한꺼번에 모든 페이지를 요청하지 않고, 3개씩 묶어서 처리 (Concurrency Limit)
+    const results: Array<Pick<Quiz, 'id' | 'title' | 'hasSubmitted' | 'endAt'>> = []
+    const chunkSize = 3
+
+    for (let i = 0; i < quizzes.length; i += chunkSize) {
+      const chunk = quizzes.slice(i, i + chunkSize)
+      const chunkResults = await Promise.all(
+        chunk.map(async quiz => {
+          try {
+            const $detailPage = await fetchAndParse(`/mod/quiz/view.php?id=${quiz.id}`)
+            const mainContent = $detailPage('#region-main')
+            const dueMatch = mainContent.text().match(/(Close|Closing date):\s*([^\n,]+)/i)
+
+            return {
+              ...quiz,
+              hasSubmitted: checkQuizSubmissionDetail($detailPage),
+              endAt: dueMatch ? dueMatch[2].trim() : quiz.endAt,
+            }
+          } catch (error) {
+            console.error(`[Parser] Failed to fetch quiz detail for ${quiz.id}:`, error)
+            return quiz
           }
-        } catch {
-          return quiz
-        }
-      }),
-    )
+        }),
+      )
+      results.push(...chunkResults)
+    }
+
+    return results
   } catch {
     return []
   }

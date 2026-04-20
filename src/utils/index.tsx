@@ -72,16 +72,30 @@ export function cn(...inputs: ClassValue[]) {
   return customTwMerge(clsx(inputs))
 }
 
+// --- Date Utils ---
+/**
+ * Safari 등 다양한 브라우저에서 날짜 문자열을 안전하게 파싱합니다.
+ * "2024-05-01 23:59:59" 포맷을 "2024-05-01T23:59:59"로 변환하여 처리합니다.
+ */
+export const safeParseDate = (dateStr: string | null | undefined): Date | null => {
+  if (!dateStr) return null
+  try {
+    const isoStr = dateStr.trim().replace(' ', 'T')
+    const date = new Date(isoStr)
+    return isNaN(date.getTime()) ? null : date
+  } catch {
+    return null
+  }
+}
+
 // --- Task Utils ---
 export type TaskStatus = 'submitted' | 'expired' | 'imminent' | 'ongoing' | 'no-deadline'
 
 export const getTaskStatus = (task: Activity, now: Date = new Date()): TaskStatus => {
   if (task.hasSubmitted) return 'submitted'
 
-  const endAtDate = task.endAt ? new Date(task.endAt) : null
-  const isValidDate = endAtDate && !isNaN(endAtDate.getTime())
-
-  if (!isValidDate) return 'no-deadline'
+  const endAtDate = safeParseDate(task.endAt)
+  if (!endAtDate) return 'no-deadline'
 
   const isExpired = isPast(endAtDate)
   if (isExpired) return 'expired'
