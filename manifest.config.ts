@@ -9,7 +9,7 @@ const isDev = process.env.NODE_ENV === 'development'
 
 export default defineManifest(async () => ({
   manifest_version: 3,
-  name: isDev ? '[DEV] 가천 어시스턴트 - 과제 대시보드' : '가천 어시스턴트 - 과제 대시보드',
+  name: isDev ? '[DEV] 가천 어시스턴트·가천대학교 사이버캠퍼스 과제 어시스턴트' : '가천 어시스턴트·가천대학교 사이버캠퍼스 과제 어시스턴트',
   description: packageJson.description,
   version: label === '0' ? `${major}.${minor}.${patch}` : `${major}.${minor}.${patch}.${label}`,
   version_name: packageJson.version,

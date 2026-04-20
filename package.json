@@ -1,6 +1,6 @@
 {
   "name": "gachon-assistant",
-  "description": "과제 대시보드 · 사이버캠퍼스 어시스턴트",
+  "description": "가천대학교 과제 대시보드·사이버캠퍼스 어시스턴트",
   "version": "2.0.0",
   "license": "MIT",
   "type": "module",
