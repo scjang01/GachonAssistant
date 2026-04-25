@@ -6,26 +6,14 @@ import { useRef, useState } from 'react'
 
 import { LoadingSkeleton } from './LoadingSkeleton'
 import { TaskList } from './TaskList'
+import { ACTIVITY_TYPE_MAP } from '@/constants'
 import { useContentsFetcher } from '@/hooks/useContentsFetcher'
 import { useTaskFilter } from '@/hooks/useTaskFilter'
 import { useStorageStore } from '@/storage/useStorageStore'
 import type { ActivityStatus, ActivityType } from '@/types'
 import { cn } from '@/utils'
 
-const STATUS_MAP: Record<string, string> = {
-  ongoing: '진행 중',
-  imminent: '마감 임박',
-  expired: '마감 지남',
-  submitted: '완료',
-}
-
-const CATEGORY_MAP: Record<string, string> = {
-  assignment: '과제',
-  quiz: '퀴즈',
-  mooc: 'MOOC',
-}
-
-const STATUS_STYLES: Record<string, { active: string; inactive: string; label: string }> = {
+const STATUS_STYLES: Record<Exclude<ActivityStatus, 'all'>, { active: string; inactive: string; label: string }> = {
   ongoing: {
     active: 'bg-blue-600 text-white shadow-md',
     inactive: 'bg-blue-50 text-blue-700 hover:bg-blue-100',
@@ -47,6 +35,11 @@ const STATUS_STYLES: Record<string, { active: string; inactive: string; label: s
     label: '완료',
   },
 }
+
+const STATUS_MAP = Object.entries(STATUS_STYLES).reduce(
+  (acc, [key, value]) => ({ ...acc, [key]: value.label }),
+  { all: '전체' } as Record<ActivityStatus, string>,
+)
 
 export function TaskContent() {
   const [searchQuery, setSearchQuery] = useState('')
@@ -114,7 +107,11 @@ export function TaskContent() {
               <FilterBadge key={s} label={STATUS_MAP[s]} onRemove={() => removeFilter('statuses', s)} />
             ))}
             {filterOptions.categories.map(c => (
-              <FilterBadge key={c} label={CATEGORY_MAP[c]} onRemove={() => removeFilter('categories', c)} />
+              <FilterBadge
+                key={c}
+                label={ACTIVITY_TYPE_MAP[c as keyof typeof ACTIVITY_TYPE_MAP] || c}
+                onRemove={() => removeFilter('categories', c)}
+              />
             ))}
             {filterOptions.courseIds.map(id => (
               <FilterBadge
@@ -155,7 +152,7 @@ export function TaskContent() {
                 />
                 <FilterSection
                   label="카테고리"
-                  options={CATEGORY_MAP}
+                  options={ACTIVITY_TYPE_MAP}
                   selected={filterOptions.categories}
                   onToggle={val => toggleFilter('categories', val as ActivityType)}
                 />
