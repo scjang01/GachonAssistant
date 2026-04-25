@@ -132,24 +132,33 @@ chrome.storage.onChanged.addListener((changes, areaName) => {
 // 7. HTML Fetch 대행 (Open Proxy 방지)
 chrome.runtime.onMessage.addListener((request, _sender, sendResponse) => {
   if (request.action === 'fetch-html') {
-    const allowedDomains = ['https://cyber.gachon.ac.kr', 'https://lib.gachon.ac.kr']
-    const isAllowed = allowedDomains.some(domain => request.url.startsWith(domain))
+    const allowedOrigins = ['https://cyber.gachon.ac.kr', 'https://lib.gachon.ac.kr']
 
-    if (!isAllowed) {
-      sendResponse({ success: false, error: 'Forbidden domain' })
-      return true
+    try {
+      const url = new URL(request.url)
+      if (!allowedOrigins.includes(url.origin)) {
+        sendResponse({ success: false, error: 'Forbidden domain' })
+        return false
+      }
+    } catch (e) {
+      sendResponse({ success: false, error: 'Invalid URL' })
+      return false
     }
 
     fetch(request.url, { credentials: 'include' })
       .then(async response => {
         const html = await response.text()
-        sendResponse({ success: true, html, finalUrl: response.url })
+        sendResponse({
+          success: true,
+          html,
+          finalUrl: response.url,
+        })
       })
       .catch(error => {
         sendResponse({ success: false, error: error.message })
       })
-    return true
+
+    return true // 비동기 응답을 위해 true 반환
   }
 })
-
 export {}
