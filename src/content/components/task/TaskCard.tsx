@@ -3,6 +3,7 @@ import { ko } from 'date-fns/locale'
 import { Video, FileText, CheckCircle, AlertTriangle, Clock, XCircle, HelpCircle, Check } from 'lucide-react'
 import { useMemo, useState, useEffect } from 'react'
 
+import { ACTIVITY_TYPE_MAP } from '@/constants'
 import { useStorageStore } from '@/storage/useStorageStore'
 import type { Activity } from '@/types'
 import { cn, origin, getTaskStatus } from '@/utils'
@@ -48,13 +49,6 @@ const StatusBadge = ({
 
 type Props = {
   task: Activity
-}
-
-const TYPE_MAP: Record<string, string> = {
-  assignment: '과제',
-  video: '동영상',
-  quiz: '퀴즈',
-  mooc: 'MOOC',
 }
 
 export function TaskCard({ task }: Props) {
@@ -150,7 +144,7 @@ export function TaskCard({ task }: Props) {
               <div className="flex flex-1 flex-col">
                 <h3 className="mb-2px flex-1 break-keep text-14px font-semibold text-gray-700">{task.title}</h3>
                 <span className="text-11px text-gray-500">
-                  {task.courseTitle} · {TYPE_MAP[task.type]}
+                  {task.courseTitle} · {ACTIVITY_TYPE_MAP[task.type as keyof typeof ACTIVITY_TYPE_MAP]}
                 </span>
               </div>
             </div>

@@ -23,8 +23,13 @@ export const origin = 'https://cyber.gachon.ac.kr' as UniversityLink
 
 export const getOrigin = (url?: string): UniversityLink => {
   if (url) {
-    const matched = UNIVERSITY_LINK_LIST.find(u => url.startsWith(u))
-    if (matched) return matched
+    try {
+      const parsedUrl = new URL(url)
+      const matched = UNIVERSITY_LINK_LIST.find(u => u === parsedUrl.origin)
+      if (matched) return matched
+    } catch (e) {
+      // url이 상대 경로이거나 절대 경로가 아님. 기본 origin 반환.
+    }
   }
   return origin
 }

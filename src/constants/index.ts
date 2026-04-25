@@ -10,3 +10,10 @@ export const UNIVERSITY_LINK_LIST = Object.keys(UNIVERSITY_NAME_MAP) as Universi
 export const SHADOW_HOST_ID = 'gachon-assistant-shadow-host'
 
 export const TAB_LIST = ['진행중인 과제', '모든 과제']
+
+export const ACTIVITY_TYPE_MAP = {
+  assignment: '과제',
+  video: '동영상',
+  quiz: '퀴즈',
+  mooc: 'MOOC',
+} as const

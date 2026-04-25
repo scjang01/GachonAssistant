@@ -4,7 +4,7 @@ import { chromeStorageClient } from './chromeStorageClient'
 import packageJson from '../../package.json'
 import { filterActivities } from '@/content/components/task/filterActivities'
 import type { Activity, StorageData } from '@/types'
-import { isMac } from '@/utils'
+import { isMac, safeParseDate } from '@/utils'
 
 /**
  * 앱의 전역 상태를 관리하고 로컬 스토리지와 동기화하는 Zustand 스토어
@@ -87,18 +87,25 @@ export const useStorageStore = create<StorageStore>((set, get) => ({
   getFilteredActivities: (searchQuery: string) => {
     const { activityList } = get().contents
     const { manualOverrides, filterOptions } = get()
+    const combinedOptions = { ...filterOptions, searchQuery }
 
-    return activityList
-      .map(activity => ({
-        ...activity,
-        hasSubmitted: manualOverrides[activity.id] !== undefined ? manualOverrides[activity.id] : activity.hasSubmitted,
-      }))
-      .filter(activity => filterActivities(activity, { ...filterOptions, searchQuery }))
-      .sort((a, b) => {
-        const timeA = a.endAt ? new Date(a.endAt).getTime() : Infinity
-        const timeB = b.endAt ? new Date(b.endAt).getTime() : Infinity
-        return timeA - timeB
-      })
+    const filtered: { activity: Activity; time: number }[] = []
+
+    for (let i = 0; i < activityList.length; i++) {
+      const activity = activityList[i]
+      const hasSubmitted = manualOverrides[activity.id] !== undefined ? manualOverrides[activity.id] : activity.hasSubmitted
+      const updatedActivity: Activity = { ...activity, hasSubmitted }
+
+      if (filterActivities(updatedActivity, combinedOptions)) {
+        const parsedDate = safeParseDate(updatedActivity.endAt)
+        filtered.push({
+          activity: updatedActivity,
+          time: parsedDate ? parsedDate.getTime() : Infinity,
+        })
+      }
+    }
+
+    return filtered.sort((a, b) => a.time - b.time).map(item => item.activity)
   },
 
   /** 모든 설정을 초기화합니다. */
