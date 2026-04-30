@@ -15,7 +15,7 @@ const StatusBadge = ({
   task: Activity
   status: 'submitted' | 'expired' | 'imminent' | 'ongoing' | 'no-deadline'
 }) => {
-  const isVideo = task.type === 'video' || task.type === 'mooc'
+  const isVideo = task.type === 'video' || (task.type as string) === 'mooc'
 
   switch (status) {
     case 'submitted':
@@ -107,7 +107,8 @@ export function TaskCard({ task }: Props) {
     const getModPath = () => {
       switch (task.type) {
         case 'assignment': return 'assign'
-        case 'video': case 'mooc': return 'vod'
+        case 'video':
+        case 'mooc' as any: return 'vod'
         case 'quiz': return 'quiz'
         default: return 'assign'
       }
@@ -133,8 +134,8 @@ export function TaskCard({ task }: Props) {
           <div className="flex items-start justify-between">
             <div className="flex flex-1 items-start">
               <span className="mr-8px mt-2px flex-shrink-0 text-gray-500">
-                {task.type === 'video' || task.type === 'mooc' ? (
-                  <Video size={16} />
+                {task.type === 'video' || (task.type as string) === 'mooc' ? (
+                   <Video size={16} />
                 ) : task.type === 'quiz' ? (
                   <HelpCircle size={16} />
                 ) : (
@@ -144,7 +145,7 @@ export function TaskCard({ task }: Props) {
               <div className="flex flex-1 flex-col">
                 <h3 className="mb-2px flex-1 break-keep text-14px font-semibold text-gray-700">{task.title}</h3>
                 <span className="text-11px text-gray-500">
-                  {task.courseTitle} · {ACTIVITY_TYPE_MAP[task.type as keyof typeof ACTIVITY_TYPE_MAP]}
+                  {task.courseTitle} · {ACTIVITY_TYPE_MAP[task.type as keyof typeof ACTIVITY_TYPE_MAP] || ((task.type as any) === 'mooc' ? '녹화강의' : task.type)}
                 </span>
               </div>
             </div>
@@ -161,7 +162,7 @@ export function TaskCard({ task }: Props) {
               <Check size={16} strokeWidth={3} />
             </button>
           </div>
-          {(task.type === 'video' || task.type === 'mooc') && 'progress' in task && task.progress !== undefined && (
+          {(task.type === 'video' || (task.type as string) === 'mooc') && 'progress' in task && task.progress !== undefined && (
             <div className="mt-8px flex flex-col gap-4px pl-24px">
               <div className="flex justify-between text-10px font-medium text-gray-400">
                 <span>진행도</span>

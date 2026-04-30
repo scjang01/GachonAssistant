@@ -26,8 +26,9 @@ const filterByCategory = (activity: Activity, categories: string[]): boolean => 
   if (categories.length === 0 || categories.includes('all')) return true
 
   return categories.some(category => {
-    if (category === 'video' || category === 'mooc') {
-      return activity.type === 'video' || activity.type === 'mooc'
+    // 호환성을 위해 video 필터 선택 시 mooc 타입도 포함
+    if (category === 'video') {
+      return activity.type === 'video' || (activity.type as string) === 'mooc'
     }
     return activity.type === category
   })

@@ -27,13 +27,7 @@ export interface Quiz extends BaseActivity {
   type: 'quiz'
 }
 
-export interface Mooc extends BaseActivity {
-  type: 'mooc'
-  sectionTitle: string
-  progress?: number
-}
-
-export type Activity = Assignment | Video | Quiz | Mooc
+export type Activity = Assignment | Video | Quiz
 
 export type Contents = {
   courseList: Course[]
@@ -42,7 +36,7 @@ export type Contents = {
 
 export type ActivityStatus = 'all' | 'ongoing' | 'imminent' | 'expired' | 'submitted'
 
-export type ActivityType = 'assignment' | 'video' | 'quiz' | 'mooc'
+export type ActivityType = 'assignment' | 'video' | 'quiz'
 
 export type FilterOptions = {
   statuses: ActivityStatus[]

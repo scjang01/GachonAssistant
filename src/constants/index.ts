@@ -13,7 +13,6 @@ export const TAB_LIST = ['진행중인 과제', '모든 과제']
 
 export const ACTIVITY_TYPE_MAP = {
   assignment: '과제',
-  video: '동영상',
+  video: '녹화강의',
   quiz: '퀴즈',
-  mooc: 'MOOC',
 } as const

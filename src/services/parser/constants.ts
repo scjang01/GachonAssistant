@@ -144,5 +144,5 @@ export const URL_PATTERNS = {
   assignmentSubmitted: (courseId: string) => `/mod/assign/index.php?id=${courseId}`,
   videoSubmitted: (courseId: string) => `/report/ubcompletion/user_progress.php?id=${courseId}`,
   quizSubmitted: (courseId: string) => `/mod/quiz/index.php?id=${courseId}`,
-  moocIndex: (courseId: string) => `/mod/vod/index.php?id=${courseId}`,
+  videoIndex: (courseId: string) => `/mod/vod/index.php?id=${courseId}`,
 } as const

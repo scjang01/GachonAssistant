@@ -2,7 +2,7 @@ import { DOM_SELECTORS, UNIVERSITY_REGEX, SUBMISSION_STRINGS, URL_PATTERNS } fro
 import { fetchAndParse } from './utils/dom'
 import { UNIVERSITY_NAME_MAP } from '@/constants'
 import type { University } from '@/constants'
-import type { Activity, Assignment, Course, Quiz, Video, Mooc } from '@/types'
+import type { Activity, Assignment, Course, Quiz, Video } from '@/types'
 import { getLinkId, mapElement, getAttr, getText, getDirectText, origin } from '@/utils'
 
 import type * as cheerio from 'cheerio'
@@ -127,7 +127,7 @@ export async function getVideoSubmitted(
     })
 
     // 2. 메타데이터(ID, 마감일) 매핑
-    const moocMeta: Record<string, { id: string; endAt: string }> = {}
+    const videoMeta: Record<string, { id: string; endAt: string }> = {}
     $overviewPage('.modtype_vod').each((_, el) => {
       const $el = $overviewPage(el)
       const $link = $el.find('.activityinstance a')
@@ -140,15 +140,15 @@ export async function getVideoSubmitted(
       let endAt = dateMatch ? dateMatch[1].trim() : ''
       if (endAt && endAt.length === 10) endAt += ' 23:59:59'
 
-      moocMeta[normalizeString(title)] = { id: getLinkId($link.attr('href') || ''), endAt }
+      videoMeta[normalizeString(title)] = { id: getLinkId($link.attr('href') || ''), endAt }
     })
 
     return progressList.map(item => {
-      const meta = moocMeta[normalizeString(item.title)]
+      const meta = videoMeta[normalizeString(item.title)]
       return { ...item, id: meta?.id || item.title, endAt: meta?.endAt || '' }
     })
   } catch (error) {
-    console.error(`[Parser] Error fetching MOOC data for ${courseId}:`, error)
+    console.error(`[Parser] Error fetching video data for ${courseId}:`, error)
     return []
   }
 }
@@ -246,8 +246,8 @@ export async function getActivities(
     type: 'assignment', id: a.id, courseId, courseTitle, title: a.title, startAt: '', endAt: a.endAt, hasSubmitted: a.hasSubmitted,
   }))
 
-  const videos: Mooc[] = videoSubmittedArray.map(v => ({
-    type: 'mooc', id: v.id || `mooc-${courseId}-${normalizeString(v.title)}`, courseId, courseTitle, title: v.title, startAt: '', endAt: v.endAt, sectionTitle: v.sectionTitle, hasSubmitted: v.hasSubmitted, progress: v.progress ?? 0,
+  const videos: Video[] = videoSubmittedArray.map(v => ({
+    type: 'video', id: v.id || `video-${courseId}-${normalizeString(v.title)}`, courseId, courseTitle, title: v.title, startAt: '', endAt: v.endAt, sectionTitle: v.sectionTitle, hasSubmitted: v.hasSubmitted, progress: v.progress ?? 0,
   }))
 
   const quizzes: Quiz[] = quizSubmittedArray.map(q => ({

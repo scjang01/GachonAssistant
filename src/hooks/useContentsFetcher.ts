@@ -105,9 +105,10 @@ export const useContentsFetcher = () => {
       }
     } catch (error) {
       if (error instanceof Error && error.message === 'LOGIN_REQUIRED') {
-        toast.error('세션이 만료되었습니다. 다시 로그인해 주세요.', {
-          icon: '🔒',
+        toast.error('🔒 세션이 만료되어 사이버캠퍼스 로그인이 필요합니다.', {
+          icon: null,
           duration: 4000,
+          style: { whiteSpace: 'nowrap', maxWidth: 'none' },
         })
       } else {
         toast.error('동기화 중 오류가 발생했습니다.')

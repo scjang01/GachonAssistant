@@ -29,13 +29,12 @@ export const useTaskFilter = (searchQuery: string) => {
         // 1. 과목 필터
         if (filterOptions.courseIds.length > 0 && !filterOptions.courseIds.includes(task.courseId)) return acc
         
-        // 2. 카테고리 필터 (동영상/MOOC 통합 처리)
+        // 2. 카테고리 필터 (호환성을 위해 video 선택 시 mooc도 포함)
         if (filterOptions.categories.length > 0) {
-          const isVideo = task.type === 'video' || task.type === 'mooc'
-          const categoryMatch = filterOptions.categories.some(
-            c => c === task.type || (isVideo && (c === 'video' || c === 'mooc')),
+          const isMatch = filterOptions.categories.some(c => 
+            c === task.type || (c === 'video' && (task.type as string) === 'mooc')
           )
-          if (!categoryMatch) return acc
+          if (!isMatch) return acc
         }
 
         // 3. 검색어 필터

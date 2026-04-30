@@ -47,7 +47,7 @@ export function TaskContent() {
   const scrollRef = useRef<HTMLDivElement>(null)
 
   const meta = useStorageStore(state => state.meta)
-  
+
   const { progress, isLoading, refetch, syncStatus } = useContentsFetcher()
   const { filteredTasks, summary, toggleFilter, removeFilter, filterOptions, courseList } = useTaskFilter(searchQuery)
 
